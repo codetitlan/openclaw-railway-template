@@ -35,6 +35,7 @@ RUN set -eux; \
 RUN pnpm install --no-frozen-lockfile
 RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
+# Force UI rebuild v1
 RUN pnpm ui:install && pnpm ui:build
 
 
