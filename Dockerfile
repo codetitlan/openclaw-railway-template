@@ -58,6 +58,9 @@ RUN apt-get update \
     sudo \
   && rm -rf /var/lib/apt/lists/*
 
+# Install Tailscale
+RUN curl -fsSL https://tailscale.com/install.sh | sh
+
 # Install Homebrew (must run as non-root user)
 # Create a user for Homebrew installation, install it, then make it accessible to all users
 RUN useradd -m -s /bin/bash linuxbrew \
