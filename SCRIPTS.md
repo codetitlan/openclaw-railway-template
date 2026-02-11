@@ -18,18 +18,43 @@ export TELEGRAM_BOT_TOKEN="..."
 export ANTHROPIC_API_KEY="..."
 export GITHUB_TOKEN="..."  # Optional
 
-# Run tests
+# Run all tests
 ./scripts/integration-tests.sh
+
+# Skip specific tests (command-line flags)
+./scripts/integration-tests.sh --skip-telegram
+./scripts/integration-tests.sh --skip-claude
+./scripts/integration-tests.sh --skip-github
+./scripts/integration-tests.sh --skip-all
+
+# Or use environment variables
+export SKIP_TELEGRAM_TEST=1
+export SKIP_CLAUDE_TEST=1
+export SKIP_GITHUB_TEST=1
+./scripts/integration-tests.sh
+
+# Show help
+./scripts/integration-tests.sh --help
 ```
 
 **Exit codes:**
-- `0`: All tests passed
+- `0`: All (enabled) tests passed
 - `1`: At least one test failed
 
 **Environment variables:**
-- `TELEGRAM_BOT_TOKEN` — Telegram bot token (required)
-- `ANTHROPIC_API_KEY` — Anthropic/Claude API key (required)
+- `TELEGRAM_BOT_TOKEN` — Telegram bot token (required for test)
+- `ANTHROPIC_API_KEY` — Anthropic/Claude API key (required for test)
 - `GITHUB_TOKEN` — GitHub personal access token (optional)
+- `SKIP_TELEGRAM_TEST` — Set to `1` to skip Telegram test
+- `SKIP_CLAUDE_TEST` — Set to `1` to skip Claude API test
+- `SKIP_GITHUB_TEST` — Set to `1` to skip GitHub API test
+
+**Command-line flags:**
+- `--skip-telegram` — Skip Telegram connectivity test
+- `--skip-claude` — Skip Claude API test
+- `--skip-github` — Skip GitHub API test
+- `--skip-all` — Skip all tests
+- `--help` — Show help message
 
 ## shutdown-container.sh
 
