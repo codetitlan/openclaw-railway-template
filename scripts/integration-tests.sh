@@ -43,7 +43,7 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
   echo -e "${RED}✗ ANTHROPIC_API_KEY not set${NC}"
   CLAUDE_OK=0
 else
-  # Test API key with a simple messages request (dry-run)
+  # Test API key with a simple messages request
   CLAUDE_TEST=$(curl -s -X POST "https://api.anthropic.com/v1/messages" \
     -H "anthropic-version: 2023-06-01" \
     -H "content-type: application/json" \
