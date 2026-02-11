@@ -14,17 +14,6 @@ npm-debug.log*
 # OS
 .DS_Store
 
-# Agent workspace (local to railclaw)
-AGENTS.md
-SOUL.md
-IDENTITY.md
-USER.md
-MEMORY.md
-HEARTBEAT.md
-TOOLS.md
-BOOTSTRAP.md
-memory/
-
 .claude/
 .serena/
 .tmpdata/
