@@ -103,7 +103,7 @@ jobs:
           
           # Wait for container to be healthy
           for i in {1..30}; do
-            if docker exec openclaw-test curl -f http://localhost:3000/health 2>/dev/null; then
+            if docker exec openclaw-test curl -f http://localhost:8080/health 2>/dev/null; then
               echo "✅ Container is healthy"
               exit 0
             fi
