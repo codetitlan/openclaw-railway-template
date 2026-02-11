@@ -970,11 +970,28 @@ server.on("upgrade", async (req, socket, head) => {
 });
 
 process.on("SIGTERM", () => {
+  console.log("[wrapper] SIGTERM received, shutting down gracefully...");
+  
+  // Force exit after 10 seconds if still running
+  const killTimeout = setTimeout(() => {
+    console.error("[wrapper] Graceful shutdown timeout exceeded, forcing exit");
+    process.exit(1);
+  }, 10000);
+  killTimeout.unref(); // Don't keep process alive waiting for this timer
+  
   // Best-effort shutdown
   try {
-    if (gatewayProc) gatewayProc.kill("SIGTERM");
-  } catch {
-    // ignore
+    if (gatewayProc) {
+      console.log("[wrapper] Sending SIGTERM to gateway process");
+      gatewayProc.kill("SIGTERM");
+    }
+  } catch (err) {
+    console.error("[wrapper] Error killing gateway:", err.message);
   }
-  process.exit(0);
+  
+  // Exit after 1 second grace period
+  setTimeout(() => {
+    console.log("[wrapper] Shutdown grace period complete, exiting");
+    process.exit(0);
+  }, 1000);
 });
