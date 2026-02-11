@@ -108,10 +108,74 @@ function isConfigured() {
 
 let gatewayProc = null;
 let gatewayStarting = null;
+let tailscaleProc = null;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+async function startTailscale() {
+  const TAILSCALE_AUTH_KEY = (process.env.TAILSCALE_AUTH_KEY || "").trim();
+  
+  if (!TAILSCALE_AUTH_KEY) {
+    console.log("[tailscale] TAILSCALE_AUTH_KEY not set, skipping Tailscale initialization");
+    return { ok: false, reason: "no auth key" };
+  }
+
+  const isRoot = process.getuid?.() === 0;
+  console.log(`[tailscale] Starting Tailscale daemon (running as ${isRoot ? 'root' : 'non-root'})...`);
+  
+  // Build command: use sudo if not root, otherwise run directly
+  const tsCmd = isRoot ? "tailscaled" : "sudo";
+  const tsArgs = isRoot ? ["-cleanup=false"] : ["tailscaled", "-cleanup=false"];
+  
+  // Start tailscaled daemon
+  tailscaleProc = childProcess.spawn(tsCmd, tsArgs, {
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
+  });
+
+  tailscaleProc.on("error", (err) => {
+    console.error(`[tailscale] tailscaled spawn error: ${String(err)}`);
+  });
+
+  tailscaleProc.stderr?.on("data", (d) => {
+    console.log(`[tailscale] daemon stderr: ${d.toString("utf8").trim()}`);
+  });
+
+  tailscaleProc.stdout?.on("data", (d) => {
+    console.log(`[tailscale] daemon stdout: ${d.toString("utf8").trim()}`);
+  });
+
+  // Give daemon time to start
+  await sleep(2000);
+
+  console.log("[tailscale] Bringing up Tailscale with auth key...");
+  
+  const upCmd = isRoot ? "tailscale" : "sudo";
+  const upArgs = isRoot 
+    ? ["up", "--auth-key", TAILSCALE_AUTH_KEY, "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"]
+    : ["tailscale", "up", "--auth-key", TAILSCALE_AUTH_KEY, "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"];
+  
+  const tailscaleUp = await runCmd(upCmd, upArgs);
+
+  if (tailscaleUp.code !== 0) {
+    console.error(`[tailscale] tailscale up failed with code ${tailscaleUp.code}:`);
+    console.error(tailscaleUp.output);
+    return { ok: false, reason: "tailscale up failed" };
+  }
+
+  // Get Tailscale status
+  const statusCmd = isRoot ? "tailscale" : "sudo";
+  const statusArgs = isRoot ? ["status"] : ["tailscale", "status"];
+  const status = await runCmd(statusCmd, statusArgs);
+  console.log("[tailscale] Status:");
+  console.log(status.output);
+
+  console.log("[tailscale] ✓ Tailscale initialized successfully");
+  return { ok: true };
+}
+
 
 async function waitForGatewayReady(opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 20_000;
@@ -938,43 +1002,55 @@ app.use(async (req, res) => {
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 
-// Create HTTP server from Express app
-const server = app.listen(PORT, () => {
-  console.log(`[wrapper] listening on port ${PORT}`);
-  console.log(`[wrapper] setup wizard: http://localhost:${PORT}/setup`);
-  console.log(`[wrapper] configured: ${isConfigured()}`);
-});
-
-// Handle WebSocket upgrades
-server.on("upgrade", async (req, socket, head) => {
-  if (!isConfigured()) {
-    socket.destroy();
-    return;
-  }
-  try {
-    await ensureGatewayRunning();
-  } catch {
-    socket.destroy();
-    return;
+// Start Tailscale before listening
+(async () => {
+  const ts = await startTailscale();
+  if (!ts.ok) {
+    console.warn("[wrapper] Tailscale initialization failed, continuing without it");
   }
 
-  // Inject auth token via headers option (req.headers modification doesn't work for WS)
-  console.log(`[ws-upgrade] Proxying WebSocket upgrade with token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
-
-  proxy.ws(req, socket, head, {
-    target: GATEWAY_TARGET,
-    headers: {
-      Authorization: `Bearer ${OPENCLAW_GATEWAY_TOKEN}`,
-    },
+  // Create HTTP server from Express app
+  const server = app.listen(PORT, () => {
+    console.log(`[wrapper] listening on port ${PORT}`);
+    console.log(`[wrapper] setup wizard: http://localhost:${PORT}/setup`);
+    console.log(`[wrapper] configured: ${isConfigured()}`);
+    
+    if (ts.ok) {
+      console.log(`[wrapper] ✓ Tailscale is active - Control UI accessible via Tailscale`);
+    }
   });
-});
 
-process.on("SIGTERM", () => {
-  // Best-effort shutdown
-  try {
-    if (gatewayProc) gatewayProc.kill("SIGTERM");
-  } catch {
-    // ignore
-  }
-  process.exit(0);
-});
+  // Handle WebSocket upgrades
+  server.on("upgrade", async (req, socket, head) => {
+    if (!isConfigured()) {
+      socket.destroy();
+      return;
+    }
+    try {
+      await ensureGatewayRunning();
+    } catch {
+      socket.destroy();
+      return;
+    }
+
+    // Inject auth token via headers option (req.headers modification doesn't work for WS)
+    console.log(`[ws-upgrade] Proxying WebSocket upgrade with token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
+
+    proxy.ws(req, socket, head, {
+      target: GATEWAY_TARGET,
+      headers: {
+        Authorization: `Bearer ${OPENCLAW_GATEWAY_TOKEN}`,
+      },
+    });
+  });
+
+  process.on("SIGTERM", () => {
+    // Best-effort shutdown
+    try {
+      if (gatewayProc) gatewayProc.kill("SIGTERM");
+    } catch {
+      // ignore
+    }
+    process.exit(0);
+  });
+})();
