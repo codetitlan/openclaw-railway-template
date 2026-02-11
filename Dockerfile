@@ -53,6 +53,7 @@ RUN apt-get update \
     procps \
     file \
     git \
+    jq \
     python3 \
     pkg-config \
     sudo \
@@ -100,4 +101,8 @@ LABEL org.opencontainers.image.revision=${GIT_SHA}
 
 ENV PORT=8080
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
 CMD ["node", "src/server.js"]
