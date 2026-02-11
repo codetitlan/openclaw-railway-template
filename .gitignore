@@ -17,3 +17,23 @@ npm-debug.log*
 .claude/
 .serena/
 .tmpdata/
+
+# Local workspace config (agent-specific)
+AGENTS.md
+SOUL.md
+MEMORY.md
+USER.md
+TOOLS.md
+IDENTITY.md
+HEARTBEAT.md
+memory/
+
+# Local workspace config (agent-specific)
+AGENTS.md
+SOUL.md
+MEMORY.md
+USER.md
+TOOLS.md
+IDENTITY.md
+HEARTBEAT.md
+memory/

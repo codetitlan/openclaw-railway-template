@@ -14,45 +14,26 @@ permissions:
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run Telegram integration test
-        if: secrets.TELEGRAM_BOT_TOKEN != ''
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: |
-          bash scripts/integration-tests.sh --skip-claude --skip-github
-          
-      - name: Run Claude API integration test
-        if: secrets.ANTHROPIC_API_KEY != ''
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          bash scripts/integration-tests.sh --skip-telegram --skip-github
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Run GitHub API integration test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bash scripts/integration-tests.sh --skip-telegram --skip-claude
+      - name: Enable pnpm
+        run: corepack enable
 
-      - name: Run all integration tests
-        if: secrets.TELEGRAM_BOT_TOKEN != '' && secrets.ANTHROPIC_API_KEY != ''
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run integration tests
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || '' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bash scripts/integration-tests.sh
-
-      - name: Report status
-        if: always()
-        run: |
-          echo "✅ Integration tests completed"
-          echo "Telegram: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && '✓' || '⊘' }}"
-          echo "Claude: ${{ secrets.ANTHROPIC_API_KEY != '' && '✓' || '⊘' }}"
-          echo "GitHub: ✓"
