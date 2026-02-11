@@ -60,6 +60,9 @@ jobs:
           push: false
           load: true
           tags: openclaw-railway-template:ci
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
