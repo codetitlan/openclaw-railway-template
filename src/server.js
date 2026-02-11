@@ -972,11 +972,11 @@ server.on("upgrade", async (req, socket, head) => {
 process.on("SIGTERM", () => {
   console.log("[wrapper] SIGTERM received, shutting down gracefully...");
   
-  // Force exit after 10 seconds if still running
+  // Force exit after 20 seconds if still running
   const killTimeout = setTimeout(() => {
     console.error("[wrapper] Graceful shutdown timeout exceeded, forcing exit");
     process.exit(1);
-  }, 10000);
+  }, 20000);
   killTimeout.unref(); // Don't keep process alive waiting for this timer
   
   // Best-effort shutdown
@@ -989,9 +989,9 @@ process.on("SIGTERM", () => {
     console.error("[wrapper] Error killing gateway:", err.message);
   }
   
-  // Exit after 1 second grace period
+  // Exit after 5 second grace period
   setTimeout(() => {
     console.log("[wrapper] Shutdown grace period complete, exiting");
     process.exit(0);
-  }, 1000);
+  }, 5000);
 });
