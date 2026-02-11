@@ -90,6 +90,7 @@ RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"'
 
 COPY scripts ./scripts
 COPY src ./src
+COPY openclaw-optimized.json ./
 
 # Build metadata (injected by CI)
 ARG BUILD_DATE=unknown
@@ -101,6 +102,11 @@ LABEL org.opencontainers.image.revision=${GIT_SHA}
 
 ENV PORT=8080
 EXPOSE 8080
+
+# OpenClaw optimization defaults
+ENV OPENCLAW_CONVERSATION_MAX_MESSAGES=10
+ENV OPENCLAW_CONVERSATION_MAX_TOKENS=8000
+ENV OPENCLAW_ENABLE_PROMPT_CACHING=true
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:8080/ || exit 1

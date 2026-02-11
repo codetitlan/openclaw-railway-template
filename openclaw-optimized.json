@@ -1,0 +1,35 @@
+{
+  "description": "OpenClaw optimized configuration for Railway deployment (Future-Ready - requires OpenClaw v2026.3.0+)",
+  "version": "1.0.0",
+  "_notes": {
+    "status": "forward-looking",
+    "minOpenClawVersion": "2026.3.0",
+    "currentVersion": "2026.2.9",
+    "expectedImpact": "90% reduction in input tokens (20M → 2M/day), ~$432/month savings",
+    "references": [
+      "Cost optimization analysis: Input tokens 20.2M vs output 79K = 254:1 ratio",
+      "Anthropic Prompt Caching: https://docs.anthropic.com/en/docs/build-a-bot/caching",
+      "OpenClaw Releases: https://github.com/openclaw/openclaw/releases"
+    ]
+  },
+  "agents": {
+    "defaults": {
+      "conversationHistory": {
+        "maxMessages": 10,
+        "maxTokens": 8000,
+        "summarizeEvery": 20
+      },
+      "anthropic": {
+        "enablePromptCaching": true,
+        "cacheSystemPrompts": true
+      },
+      "reasoning": {
+        "thinkingBudgetTokens": 2000
+      }
+    }
+  },
+  "caching": {
+    "type": "ephemeral",
+    "ttlSeconds": 300
+  }
+}
