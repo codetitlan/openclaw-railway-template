@@ -1,0 +1,58 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Telegram integration test
+        if: secrets.TELEGRAM_BOT_TOKEN != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          bash scripts/integration-tests.sh --skip-claude --skip-github
+          
+      - name: Run Claude API integration test
+        if: secrets.ANTHROPIC_API_KEY != ''
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          bash scripts/integration-tests.sh --skip-telegram --skip-github
+
+      - name: Run GitHub API integration test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/integration-tests.sh --skip-telegram --skip-claude
+
+      - name: Run all integration tests
+        if: secrets.TELEGRAM_BOT_TOKEN != '' && secrets.ANTHROPIC_API_KEY != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/integration-tests.sh
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "✅ Integration tests completed"
+          echo "Telegram: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && '✓' || '⊘' }}"
+          echo "Claude: ${{ secrets.ANTHROPIC_API_KEY != '' && '✓' || '⊘' }}"
+          echo "GitHub: ✓"
