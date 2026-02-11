@@ -143,18 +143,18 @@ if [ $SKIP_GITHUB_TEST -eq 1 ]; then
   GITHUB_OK=1
 else
   echo -e "${YELLOW}[3/3] Testing GitHub API...${NC}"
-  if [ -z "$GITHUB_TOKEN" ]; then
-    echo -e "${YELLOW}⚠ GITHUB_TOKEN not set (optional)${NC}"
+  if [ -z "$GITHUB_PAT" ]; then
+    echo -e "${YELLOW}⚠ GITHUB_PAT not set (optional)${NC}"
     GITHUB_OK=1
   else
     # Debug: show token info
-    TOKEN_LENGTH=${#GITHUB_TOKEN}
-    TOKEN_PREFIX=$(echo "$GITHUB_TOKEN" | cut -c1-20)
+    TOKEN_LENGTH=${#GITHUB_PAT}
+    TOKEN_PREFIX=$(echo "$GITHUB_PAT" | cut -c1-20)
     echo "  Token length: $TOKEN_LENGTH"
     echo "  Token prefix: ${TOKEN_PREFIX}..."
     
     # Test GitHub token
-    GITHUB_TEST=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+    GITHUB_TEST=$(curl -s -H "Authorization: token ${GITHUB_PAT}" \
       "https://api.github.com/user" 2>/dev/null)
     
     # Debug: show response
