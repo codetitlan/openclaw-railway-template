@@ -78,7 +78,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Load Docker image from cache
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
@@ -115,13 +115,16 @@ jobs:
           docker logs openclaw-test
           exit 1
 
-      - name: Run integration tests
+      - name: Run integration tests inside container
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || '' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || '' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bash scripts/integration-tests.sh
+          docker exec -e TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" \
+                      -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+                      -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+                      openclaw-test bash scripts/integration-tests.sh
 
       - name: Cleanup
         if: always()
