@@ -51,8 +51,10 @@ After deployment, check the logs:
 Once Tailscale is active on the container:
 - On your mobile with Tailscale running, visit:
   ```
-  http://<container-tailnet-ip>:18789
+  https://<container-tailnet-ip>:18789
   ```
+- **Important**: Use HTTPS, not HTTP. Tailscale automatically upgrades to TLS for secure access via Tailnet
+- WebSocket connections (wss://) are handled transparently
 - Find the IP in Railway logs or via `tailscale status` on the container
 
 ## Security Notes
@@ -76,6 +78,13 @@ Once Tailscale is active on the container:
 - Check Tailscale is running: `tailscale status` (if you have shell access)
 - Try pinging the container's Tailnet IP from your mobile
 
-**Port conflict:**
-- Control UI is still on 18789 (internal gateway port)
-- Wrapper HTTP server is on 8080 (healthcheck)
+**Control UI won't connect (blank screen after login):**
+- Make sure you're using HTTPS: `https://<tailnet-ip>:18789`
+- WebSocket connections require secure TLS (wss://)
+- Tailscale automatically handles TLS wrapping for Tailnet access
+- Check browser console for connection errors
+
+**Port details:**
+- Gateway internal: HTTP on 127.0.0.1:18789 (loopback)
+- Via Tailscale: HTTPS + WSS on <tailnet-ip>:18789 (TLS wrapped by Tailscale)
+- Wrapper health: HTTP on 8080 (Railway healthcheck)
