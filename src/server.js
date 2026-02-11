@@ -116,25 +116,31 @@ function sleep(ms) {
 async function waitForGatewayReady(opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const start = Date.now();
-  const endpoints = ["/openclaw", "/openclaw", "/", "/health"];
   
-  while (Date.now() - start < timeoutMs) {
-    for (const endpoint of endpoints) {
-      try {
-        const res = await fetch(`${GATEWAY_TARGET}${endpoint}`, { method: "GET" });
-        // Any HTTP response means the port is open.
-        if (res) {
-          console.log(`[gateway] ready at ${endpoint}`);
-          return true;
+  // Fast TCP socket check (faster than HTTP)
+  return new Promise((resolve) => {
+    const check = () => {
+      const net = require("net");
+      const socket = net.createConnection(INTERNAL_GATEWAY_PORT, INTERNAL_GATEWAY_HOST);
+      
+      socket.on("connect", () => {
+        socket.destroy();
+        console.log(`[gateway] ready (TCP socket confirmed)`);
+        resolve(true);
+      });
+      
+      socket.on("error", () => {
+        const elapsed = Date.now() - start;
+        if (elapsed < timeoutMs) {
+          setTimeout(check, 100); // Faster retry (was 250ms)
+        } else {
+          console.error(`[gateway] failed to become ready after ${elapsed}ms`);
+          resolve(false);
         }
-      } catch (err) {
-        // not ready, try next endpoint
-      }
-    }
-    await sleep(250);
-  }
-  console.error(`[gateway] failed to become ready after ${timeoutMs}ms`);
-  return false;
+      });
+    };
+    check();
+  });
 }
 
 async function startGateway() {
@@ -307,11 +313,38 @@ app.use(express.json({ limit: "1mb" }));
 // Health state tracking for Railway healthchecks.
 let healthState = "starting";
 let lastHealthState = null;
+let publicUrl = process.env.RAILWAY_PUBLIC_DOMAIN || null;
+let publicUrlAccessible = false;
 
 function logHealthTransition(newState, detail) {
   if (newState !== lastHealthState) {
     console.log(`[health] ${lastHealthState || "init"} → ${newState}${detail ? ` (${detail})` : ""}`);
     lastHealthState = newState;
+  }
+}
+
+async function verifyPublicAccess() {
+  if (!publicUrl) {
+    return { ok: false, reason: "no public URL configured" };
+  }
+  
+  try {
+    const res = await fetch(`https://${publicUrl}/setup/healthz`, { 
+      method: "GET",
+      timeout: 5000 
+    });
+    const ok = res.status === 200;
+    if (ok) {
+      console.log(`[health] Public URL accessible: https://${publicUrl}`);
+    } else {
+      console.warn(`[health] Public URL returned ${res.status}: https://${publicUrl}`);
+    }
+    publicUrlAccessible = ok;
+    return { ok, status: res.status };
+  } catch (err) {
+    console.warn(`[health] Public URL not accessible: ${publicUrl} - ${err.message}`);
+    publicUrlAccessible = false;
+    return { ok: false, reason: err.message };
   }
 }
 
@@ -321,9 +354,18 @@ app.get("/setup/healthz", (_req, res) => {
   const healthy = true; // wrapper is up, that's enough for Railway
 
   const state = configured ? (gatewayUp ? "healthy" : "degraded") : "setup-pending";
-  logHealthTransition(state, `configured=${configured} gateway=${gatewayUp}`);
+  logHealthTransition(state, `configured=${configured} gateway=${gatewayUp} public=${publicUrlAccessible}`);
 
-  res.json({ ok: healthy, state, configured, gateway: gatewayUp });
+  res.json({ 
+    ok: healthy, 
+    state, 
+    configured, 
+    gateway: gatewayUp,
+    public: {
+      url: publicUrl || null,
+      accessible: publicUrlAccessible
+    }
+  });
 });
 
 // Serve static files for setup wizard
@@ -938,11 +980,34 @@ app.use(async (req, res) => {
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 
+// Startup timing
+const STARTUP_TIME = Date.now();
+console.log("[wrapper] ========== STARTUP SEQUENCE START ==========");
+
 // Create HTTP server from Express app
 const server = app.listen(PORT, () => {
-  console.log(`[wrapper] listening on port ${PORT}`);
+  const elapsed = Date.now() - STARTUP_TIME;
+  console.log(`[wrapper] listening on port ${PORT} (${elapsed}ms)`);
   console.log(`[wrapper] setup wizard: http://localhost:${PORT}/setup`);
   console.log(`[wrapper] configured: ${isConfigured()}`);
+  
+  if (publicUrl) {
+    console.log(`[wrapper] public address: https://${publicUrl}`);
+  }
+  
+  // Start gateway in background (don't block HTTP server startup)
+  if (isConfigured()) {
+    ensureGatewayRunning().catch(err => {
+      console.error(`[wrapper] Failed to start gateway: ${String(err)}`);
+    });
+    
+    // Verify public access in background (after small delay to allow Railway routing to settle)
+    setTimeout(() => {
+      verifyPublicAccess().catch(err => {
+        console.warn(`[wrapper] Public access verification failed: ${String(err)}`);
+      });
+    }, 3000);
+  }
 });
 
 // Handle WebSocket upgrades
