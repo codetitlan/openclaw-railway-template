@@ -48,3 +48,47 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ steps.meta.outputs.created || '' }}
+            GIT_SHA=${{ github.sha }}
+
+      # Redeploy on Railway after pushing a new image (main only).
+      # Requires RAILWAY_API_TOKEN, RAILWAY_SERVICE_ID, and RAILWAY_ENVIRONMENT_ID
+      # as repository secrets. Skipped if RAILWAY_API_TOKEN is not set.
+      - name: Redeploy on Railway
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != ''
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+        run: |
+          set -euo pipefail
+
+          echo "Fetching latest deployment for service..."
+          DEPLOYMENT_ID=$(curl -sf https://backboard.railway.com/graphql/v2 \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "query { deployments(first: 1, input: { serviceId: \"'"${RAILWAY_SERVICE_ID}"'\", environmentId: \"'"${RAILWAY_ENVIRONMENT_ID}"'\" }) { edges { node { id status } } } }"
+            }' | jq -r '.data.deployments.edges[0].node.id')
+
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "null" ]; then
+            echo "::error::Could not find a deployment to redeploy"
+            exit 1
+          fi
+
+          echo "Triggering redeploy for deployment ${DEPLOYMENT_ID}..."
+          RESULT=$(curl -sf https://backboard.railway.com/graphql/v2 \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { deploymentRedeploy(id: \"'"${DEPLOYMENT_ID}"'\") { id status } }"
+            }')
+
+          STATUS=$(echo "$RESULT" | jq -r '.data.deploymentRedeploy.status // empty')
+          if [ -z "$STATUS" ]; then
+            echo "::error::Redeploy failed: $RESULT"
+            exit 1
+          fi
+
+          echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
