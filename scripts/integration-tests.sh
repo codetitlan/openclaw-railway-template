@@ -66,6 +66,11 @@ done
 
 echo "========== INTEGRATION TESTS =========="
 echo ""
+echo "Configured services:"
+[ -n "$TELEGRAM_BOT_TOKEN" ] && echo "  ✓ Telegram" || echo "  ⊘ Telegram"
+[ -n "$ANTHROPIC_API_KEY" ] && echo "  ✓ Anthropic" || echo "  ⊘ Anthropic"
+[ -n "$GITHUB_TOKEN" ] && echo "  ✓ GitHub" || echo "  ⊘ GitHub"
+echo ""
 
 # Test 1: Telegram Bot Connectivity
 if [ $SKIP_TELEGRAM_TEST -eq 1 ]; then
