@@ -147,9 +147,18 @@ else
     echo -e "${YELLOW}⚠ GITHUB_TOKEN not set (optional)${NC}"
     GITHUB_OK=1
   else
+    # Debug: show token info
+    TOKEN_LENGTH=${#GITHUB_TOKEN}
+    TOKEN_PREFIX=$(echo "$GITHUB_TOKEN" | cut -c1-20)
+    echo "  Token length: $TOKEN_LENGTH"
+    echo "  Token prefix: ${TOKEN_PREFIX}..."
+    
     # Test GitHub token
     GITHUB_TEST=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
       "https://api.github.com/user" 2>/dev/null)
+    
+    # Debug: show response
+    echo "  Response: $(echo "$GITHUB_TEST" | jq -r '.message // .error // "no error field"' 2>/dev/null)"
     
     if echo "$GITHUB_TEST" | jq -e '.login' > /dev/null 2>&1; then
       LOGIN=$(echo "$GITHUB_TEST" | jq -r '.login')
