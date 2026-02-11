@@ -1,0 +1,24 @@
+# Version control
+.git
+.gitignore
+
+# Node
+node_modules
+
+# OpenClaw workspace data (persisted via volume, not baked into image)
+/data
+memory/
+*.md
+!README.md
+!package.json
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
