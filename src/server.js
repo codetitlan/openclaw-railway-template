@@ -154,8 +154,8 @@ async function startTailscale() {
   
   const upCmd = isRoot ? "tailscale" : "sudo";
   const upArgs = isRoot 
-    ? ["up", "--auth-key", TAILSCALE_AUTH_KEY, "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"]
-    : ["tailscale", "up", "--auth-key", TAILSCALE_AUTH_KEY, "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"];
+    ? ["up", "--auth-key", TAILSCALE_AUTH_KEY, "--tun=userspace", "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"]
+    : ["tailscale", "up", "--auth-key", TAILSCALE_AUTH_KEY, "--tun=userspace", "--accept-routes=true", "--accept-dns=false", "--advertise-exit-node=false"];
   
   const tailscaleUp = await runCmd(upCmd, upArgs);
 
