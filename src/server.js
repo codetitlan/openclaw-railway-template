@@ -304,8 +304,27 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
 
-// Minimal health endpoint for Railway.
-app.get("/setup/healthz", (_req, res) => res.json({ ok: true }));
+// Health state tracking for Railway healthchecks.
+let healthState = "starting";
+let lastHealthState = null;
+
+function logHealthTransition(newState, detail) {
+  if (newState !== lastHealthState) {
+    console.log(`[health] ${lastHealthState || "init"} → ${newState}${detail ? ` (${detail})` : ""}`);
+    lastHealthState = newState;
+  }
+}
+
+app.get("/setup/healthz", (_req, res) => {
+  const configured = isConfigured();
+  const gatewayUp = !!gatewayProc;
+  const healthy = true; // wrapper is up, that's enough for Railway
+
+  const state = configured ? (gatewayUp ? "healthy" : "degraded") : "setup-pending";
+  logHealthTransition(state, `configured=${configured} gateway=${gatewayUp}`);
+
+  res.json({ ok: healthy, state, configured, gateway: gatewayUp });
+});
 
 // Serve static files for setup wizard
 app.get("/setup/app.js", requireSetupAuth, (_req, res) => {
