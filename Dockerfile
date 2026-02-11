@@ -90,6 +90,14 @@ RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"'
 COPY scripts ./scripts
 COPY src ./src
 
+# Build metadata (injected by CI)
+ARG BUILD_DATE=unknown
+ARG GIT_SHA=unknown
+ENV BUILD_DATE=${BUILD_DATE}
+ENV GIT_SHA=${GIT_SHA}
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.revision=${GIT_SHA}
+
 ENV PORT=8080
 EXPOSE 8080
 CMD ["node", "src/server.js"]
