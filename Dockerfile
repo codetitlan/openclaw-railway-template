@@ -53,6 +53,7 @@ RUN apt-get update \
     procps \
     file \
     git \
+    gh \
     jq \
     python3 \
     pkg-config \
