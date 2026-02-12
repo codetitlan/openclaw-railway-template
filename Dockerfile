@@ -103,9 +103,9 @@ LABEL org.opencontainers.image.revision=${GIT_SHA}
 ENV PORT=8080
 EXPOSE 8080
 
-# OpenClaw optimization defaults
-ENV OPENCLAW_CONVERSATION_MAX_MESSAGES=10
-ENV OPENCLAW_CONVERSATION_MAX_TOKENS=8000
+# OpenClaw optimization defaults (tuned for 120k context window)
+ENV OPENCLAW_CONVERSATION_MAX_MESSAGES=20
+ENV OPENCLAW_CONVERSATION_MAX_TOKENS=50000
 ENV OPENCLAW_ENABLE_PROMPT_CACHING=true
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
