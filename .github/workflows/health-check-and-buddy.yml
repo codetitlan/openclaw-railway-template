@@ -10,11 +10,30 @@ jobs:
   # Health check for primary instance after successful deployment
   health-check:
     if: github.event.workflow_run.conclusion == 'success'
-    uses: ./.github/workflows/health-check.yml
-    with:
-      health_check_url: ${{ secrets.RAILWAY_PRIMARY_URL }}
-      initial_wait_seconds: 60
-      max_attempts: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait before health check
+        run: sleep 60
+
+      - name: Health check
+        run: |
+          HEALTH_URL="${{ secrets.RAILWAY_PRIMARY_URL }}/setup/healthz"
+          echo "🔍 Checking health endpoint: ${HEALTH_URL}"
+          
+          for i in {1..60}; do
+            if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+              echo "✅ Primary instance is healthy (attempt $i/60)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/60 - instance not ready yet..."
+            sleep 10
+          done
+          
+          echo "❌ Primary instance health check failed after 10 minutes"
+          exit 1
 
   # Trigger buddy instance deployment after successful health check
   trigger-buddy:
