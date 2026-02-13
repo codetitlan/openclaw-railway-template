@@ -44,6 +44,7 @@ jobs:
             type=raw,value=${{ steps.branch.outputs.tag }}
             type=raw,value=${{ steps.branch.outputs.tag }}-${{ github.sha }}
             type=raw,value=${{ steps.branch.outputs.tag }}-latest
+            type=raw,value=dev
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -67,5 +68,6 @@ jobs:
           echo "  - ${{ steps.branch.outputs.tag }}"
           echo "  - ${{ steps.branch.outputs.tag }}-${{ github.sha }}"
           echo "  - ${{ steps.branch.outputs.tag }}-latest"
+          echo "  - dev"
           echo ""
           echo "Image: ghcr.io/${{ github.repository }}:${{ steps.branch.outputs.tag }}"
