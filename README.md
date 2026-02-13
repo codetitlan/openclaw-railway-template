@@ -74,15 +74,31 @@ Then:
 
 ## Deployment & Health Checks
 
-After pushing to `main`, the following workflows run automatically:
+After pushing to `main`, the following workflows run automatically in sequence:
 
-1. **Docker build** - Builds and pushes image to GHCR
-2. **Redeploy on Railway** - Triggers primary instance redeploy
-3. **Health check** - Waits 60s, then verifies `/setup/healthz` endpoint is responding (max 10 minutes)
-4. **Buddy deployment** - Automatically triggers after health check succeeds
-   - Redeploys buddy service with latest image
-   - Runs for configurable duration (default 2 hours)
-   - Automatically scales down to save costs
+### Workflow Pipeline
+
+```
+Push to main
+    ↓
+[Docker build] - Build & push to GHCR
+    ↓
+[Redeploy on Railway] - Update primary instance
+    ↓
+[Health Check & Buddy Deployment] - triggered via workflow_run
+    ├─ [health-check] - Verify /setup/healthz responds
+    │   └─ Wait 60s → Poll endpoint (max 10 min)
+    └─ [trigger-buddy] - Trigger buddy deployment on success
+        └─ [deploy-buddy.yml] - Run buddy for 2 hours
+```
+
+### Workflow Files
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `docker-build.yml` | Push to any branch | Build Docker image, redeploy to Railway |
+| `health-check-and-buddy.yml` | Docker build completes on main | Health verification & buddy deployment |
+| `deploy-buddy.yml` | Manual or triggered by health-check | Run buddy instance for configured duration |
 
 ### Health Check Details
 
@@ -90,7 +106,7 @@ After pushing to `main`, the following workflows run automatically:
 - **Initial wait**: 60 seconds after primary redeploy
 - **Poll interval**: 10 seconds
 - **Max attempts**: 60 (10 minutes total timeout)
-- **Trigger**: Only runs on `main` branch pushes
+- **Trigger**: After docker-build.yml succeeds on main
 
 ### Buddy Instance Details
 
@@ -98,6 +114,19 @@ After pushing to `main`, the following workflows run automatically:
 - **Duration**: 2 hours (configurable via workflow dispatch)
 - **Cost**: ~$0.50-1/day vs $7-8/day for always-on
 - **Workflow**: `.github/workflows/deploy-buddy.yml`
+- **Manual trigger**: Available in GitHub Actions UI
+
+### Troubleshooting
+
+If health checks fail:
+1. Verify `RAILWAY_PRIMARY_URL` secret is set correctly
+2. Check primary instance is accessible
+3. Ensure `/setup/healthz` endpoint responds with 200 status
+
+If buddy deployment doesn't trigger:
+1. Verify `RAILWAY_BUDDY_SERVICE_ID` and `RAILWAY_BUDDY_ENVIRONMENT_ID` are set
+2. Check health-check job passed successfully
+3. Verify GitHub token has workflows permission
 
 See `.github/workflows/` for implementation details.
 
