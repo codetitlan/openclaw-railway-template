@@ -78,10 +78,28 @@ After pushing to `main`, the following workflows run automatically:
 
 1. **Docker build** - Builds and pushes image to GHCR
 2. **Redeploy on Railway** - Triggers primary instance redeploy
-3. **Health check** - Waits 60s, then verifies `/setup/healthz` endpoint is responding
-4. **Buddy deployment** (optional) - Triggers on-demand buddy instance for cost optimization
+3. **Health check** - Waits 60s, then verifies `/setup/healthz` endpoint is responding (max 10 minutes)
+4. **Buddy deployment** - Automatically triggers after health check succeeds
+   - Redeploys buddy service with latest image
+   - Runs for configurable duration (default 2 hours)
+   - Automatically scales down to save costs
 
-See `.github/workflows/` for details.
+### Health Check Details
+
+- **Endpoint**: `{RAILWAY_PRIMARY_URL}/setup/healthz`
+- **Initial wait**: 60 seconds after primary redeploy
+- **Poll interval**: 10 seconds
+- **Max attempts**: 60 (10 minutes total timeout)
+- **Trigger**: Only runs on `main` branch pushes
+
+### Buddy Instance Details
+
+- **Triggered by**: Successful health check
+- **Duration**: 2 hours (configurable via workflow dispatch)
+- **Cost**: ~$0.50-1/day vs $7-8/day for always-on
+- **Workflow**: `.github/workflows/deploy-buddy.yml`
+
+See `.github/workflows/` for implementation details.
 
 ## Cost Optimization (Future-Ready)
 
