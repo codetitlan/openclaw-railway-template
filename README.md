@@ -1,6 +1,7 @@
 # Openclaw Railway Template (1‑click deploy)
 
 [![Docker build](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml)
+[![Docker build (Feature Branches)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml)
 [![Feature branch CI](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml)
 [![Integration Tests](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml)
 
