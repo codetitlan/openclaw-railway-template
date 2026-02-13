@@ -157,6 +157,21 @@ See `openclaw-optimized.json` in this repo for full reference configuration.
 - **Anthropic Prompt Caching:** https://docs.anthropic.com/en/docs/build-a-bot/caching
 - **OpenClaw Releases:** https://github.com/openclaw/openclaw/releases
 
+## GitHub Secrets Setup
+
+To enable the full deployment pipeline (health checks + buddy instance), configure these secrets in the repository settings:
+
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `RAILWAY_API_TOKEN` | Railway API token for service management | `eyJ...` |
+| `RAILWAY_SERVICE_ID` | Primary service ID on Railway | `svc_xxxxx` |
+| `RAILWAY_ENVIRONMENT_ID` | Railway environment ID | `env_xxxxx` |
+| `RAILWAY_PRIMARY_URL` | Primary instance public URL | `https://openclaw-primary.up.railway.app` |
+| `RAILWAY_BUDDY_SERVICE_ID` | Buddy service ID on Railway | `svc_yyyyy` |
+| `RAILWAY_BUDDY_ENVIRONMENT_ID` | Buddy environment ID | `env_yyyyy` |
+
+Without these secrets, workflows will be skipped. See Railway dashboard for IDs.
+
 ## Local smoke test
 
 ```bash
