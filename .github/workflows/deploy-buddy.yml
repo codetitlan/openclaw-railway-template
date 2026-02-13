@@ -1,0 +1,70 @@
+name: Deploy Buddy Instance
+
+on:
+  workflow_dispatch:
+    inputs:
+      buddy_duration_hours:
+        description: 'How long to run buddy (hours)'
+        required: false
+        default: '2'
+
+env:
+  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+  RAILWAY_BUDDY_SERVICE_ID: ${{ secrets.RAILWAY_BUDDY_SERVICE_ID }}
+  RAILWAY_BUDDY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_BUDDY_ENVIRONMENT_ID }}
+
+jobs:
+  deploy-buddy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Redeploy Buddy on Railway
+        if: env.RAILWAY_API_TOKEN != '' && env.RAILWAY_BUDDY_SERVICE_ID != '' && env.RAILWAY_BUDDY_ENVIRONMENT_ID != ''
+        run: |
+          set -euo pipefail
+
+          echo "🤝 Deploying buddy instance..."
+          
+          # Fetch latest deployment for buddy service
+          echo "Fetching latest deployment for buddy service..."
+          DEPLOYMENT_ID=$(curl -sf https://backboard.railway.com/graphql/v2 \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "query { deployments(first: 1, input: { serviceId: \"'"${RAILWAY_BUDDY_SERVICE_ID}"'\", environmentId: \"'"${RAILWAY_BUDDY_ENVIRONMENT_ID}"'\" }) { edges { node { id status } } } }"
+            }' | jq -r '.data.deployments.edges[0].node.id')
+
+          if [ -z "$DEPLOYMENT_ID" ] || [ "$DEPLOYMENT_ID" = "null" ]; then
+            echo "::error::Could not find a deployment to redeploy"
+            exit 1
+          fi
+
+          echo "Triggering redeploy for buddy deployment ${DEPLOYMENT_ID}..."
+          RESULT=$(curl -sf https://backboard.railway.com/graphql/v2 \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation { deploymentRedeploy(id: \"'"${DEPLOYMENT_ID}"'\") { id status } }"
+            }')
+
+          STATUS=$(echo "$RESULT" | jq -r '.data.deploymentRedeploy.status // empty')
+          if [ -z "$STATUS" ]; then
+            echo "::error::Redeploy failed: $RESULT"
+            exit 1
+          fi
+
+          echo "✅ Buddy redeploy triggered — new deployment status: ${STATUS}"
+
+      - name: Wait for Buddy Duration
+        run: |
+          DURATION_HOURS="${{ github.event.inputs.buddy_duration_hours }}"
+          DURATION_SECONDS=$((DURATION_HOURS * 3600))
+          echo "⏱️ Running buddy for ${DURATION_HOURS} hour(s)..."
+          sleep "$DURATION_SECONDS"
+
+      - name: Notify Complete
+        if: always()
+        run: |
+          echo "✅ Buddy session complete (ran for ${{ github.event.inputs.buddy_duration_hours }} hours)"
