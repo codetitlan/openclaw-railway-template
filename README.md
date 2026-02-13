@@ -72,6 +72,17 @@ Then:
 4. Copy the **Bot Token** and paste it into `/setup`
 5. Invite the bot to your server (OAuth2 URL Generator → scopes: `bot`, `applications.commands`; then choose permissions)
 
+## Deployment & Health Checks
+
+After pushing to `main`, the following workflows run automatically:
+
+1. **Docker build** - Builds and pushes image to GHCR
+2. **Redeploy on Railway** - Triggers primary instance redeploy
+3. **Health check** - Waits 60s, then verifies `/setup/healthz` endpoint is responding
+4. **Buddy deployment** (optional) - Triggers on-demand buddy instance for cost optimization
+
+See `.github/workflows/` for details.
+
 ## Cost Optimization (Future-Ready)
 
 This template includes forward-looking optimizations to reduce Anthropic API costs by 50-60%+ when OpenClaw adds support for these configuration options.
