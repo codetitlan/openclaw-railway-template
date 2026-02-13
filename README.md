@@ -74,14 +74,61 @@ Then:
 
 ## Deployment & Health Checks
 
-After pushing to `main`, the following workflows run automatically:
+After pushing to `main`, the following workflows run automatically in sequence:
 
-1. **Docker build** - Builds and pushes image to GHCR
-2. **Redeploy on Railway** - Triggers primary instance redeploy
-3. **Health check** - Waits 60s, then verifies `/setup/healthz` endpoint is responding
-4. **Buddy deployment** (optional) - Triggers on-demand buddy instance for cost optimization
+### Workflow Pipeline
 
-See `.github/workflows/` for details.
+```
+Push to main
+    ↓
+[Docker build] - Build & push to GHCR
+    ↓
+[Redeploy on Railway] - Update primary instance
+    ↓
+[Health Check & Buddy Deployment] - triggered via workflow_run
+    ├─ [health-check] - Verify /setup/healthz responds
+    │   └─ Wait 60s → Poll endpoint (max 10 min)
+    └─ [trigger-buddy] - Trigger buddy deployment on success
+        └─ [deploy-buddy.yml] - Run buddy for 2 hours
+```
+
+### Workflow Files
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `docker-build.yml` | Push to any branch | Build Docker image, redeploy to Railway |
+| `health-check-and-buddy.yml` | Docker build completes on main | Health verification & buddy deployment |
+| `deploy-buddy.yml` | Manual or triggered by health-check | Run buddy instance for configured duration |
+
+### Health Check Details
+
+- **Endpoint**: `{RAILWAY_PRIMARY_URL}/setup/healthz`
+- **Initial wait**: 60 seconds after primary redeploy
+- **Poll interval**: 10 seconds
+- **Max attempts**: 60 (10 minutes total timeout)
+- **Trigger**: After docker-build.yml succeeds on main
+
+### Buddy Instance Details
+
+- **Triggered by**: Successful health check
+- **Duration**: 2 hours (configurable via workflow dispatch)
+- **Cost**: ~$0.50-1/day vs $7-8/day for always-on
+- **Workflow**: `.github/workflows/deploy-buddy.yml`
+- **Manual trigger**: Available in GitHub Actions UI
+
+### Troubleshooting
+
+If health checks fail:
+1. Verify `RAILWAY_PRIMARY_URL` secret is set correctly
+2. Check primary instance is accessible
+3. Ensure `/setup/healthz` endpoint responds with 200 status
+
+If buddy deployment doesn't trigger:
+1. Verify `RAILWAY_BUDDY_SERVICE_ID` and `RAILWAY_BUDDY_ENVIRONMENT_ID` are set
+2. Check health-check job passed successfully
+3. Verify GitHub token has workflows permission
+
+See `.github/workflows/` for implementation details.
 
 ## Cost Optimization (Future-Ready)
 
@@ -138,6 +185,21 @@ See `openclaw-optimized.json` in this repo for full reference configuration.
 - **Cost optimization analysis:** Token usage pattern review (input tokens: 20.2M vs output: 79K = 254:1 ratio)
 - **Anthropic Prompt Caching:** https://docs.anthropic.com/en/docs/build-a-bot/caching
 - **OpenClaw Releases:** https://github.com/openclaw/openclaw/releases
+
+## GitHub Secrets Setup
+
+To enable the full deployment pipeline (health checks + buddy instance), configure these secrets in the repository settings:
+
+| Secret | Description | Example |
+|--------|-------------|---------|
+| `RAILWAY_API_TOKEN` | Railway API token for service management | `eyJ...` |
+| `RAILWAY_SERVICE_ID` | Primary service ID on Railway | `svc_xxxxx` |
+| `RAILWAY_ENVIRONMENT_ID` | Railway environment ID | `env_xxxxx` |
+| `RAILWAY_PRIMARY_URL` | Primary instance public URL | `https://openclaw-primary.up.railway.app` |
+| `RAILWAY_BUDDY_SERVICE_ID` | Buddy service ID on Railway | `svc_yyyyy` |
+| `RAILWAY_BUDDY_ENVIRONMENT_ID` | Buddy environment ID | `env_yyyyy` |
+
+Without these secrets, workflows will be skipped. See Railway dashboard for IDs.
 
 ## Local smoke test
 
