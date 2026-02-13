@@ -92,3 +92,12 @@ jobs:
           fi
 
           echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
+
+      # Health check for primary instance after successful deployment
+      - name: Call Health Check Workflow
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != ''
+        uses: ./.github/workflows/health-check.yml
+        with:
+          health_check_url: ${{ secrets.RAILWAY_PRIMARY_URL }}
+          initial_wait_seconds: 60
+          max_attempts: 60
