@@ -13,6 +13,8 @@ permissions:
 jobs:
   docker-build:
     runs-on: ubuntu-latest
+    outputs:
+      redeploy_success: ${{ steps.redeploy.outcome == 'success' && 'true' || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +58,7 @@ jobs:
       # Requires RAILWAY_API_TOKEN, RAILWAY_SERVICE_ID, and RAILWAY_ENVIRONMENT_ID
       # as repository secrets. Skipped if RAILWAY_API_TOKEN is not set.
       - name: Redeploy on Railway
+        id: redeploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != '' && env.RAILWAY_SERVICE_ID != '' && env.RAILWAY_ENVIRONMENT_ID != ''
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
@@ -93,11 +96,15 @@ jobs:
 
           echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
 
-      # Health check for primary instance after successful deployment
-      - name: Call Health Check Workflow
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != ''
-        uses: ./.github/workflows/health-check.yml
-        with:
-          health_check_url: ${{ secrets.RAILWAY_PRIMARY_URL }}
-          initial_wait_seconds: 60
-          max_attempts: 60
+  # Health check for primary instance after successful deployment
+  health-check:
+    needs: docker-build
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.docker-build.outputs.redeploy_success == 'true'
+    uses: ./.github/workflows/health-check.yml
+    with:
+      health_check_url: ${{ secrets.RAILWAY_PRIMARY_URL }}
+      initial_wait_seconds: 60
+      max_attempts: 60
