@@ -93,13 +93,3 @@ jobs:
           fi
 
           echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
-
-  # Health check for primary instance after successful deployment
-  health-check:
-    needs: docker-build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.docker-build.result == 'success'
-    uses: ./.github/workflows/health-check.yml
-    with:
-      health_check_url: ${{ secrets.RAILWAY_PRIMARY_URL }}
-      initial_wait_seconds: 60
-      max_attempts: 60
