@@ -3,6 +3,8 @@
 [![Docker build](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml)
 [![Docker build (Feature Branches)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml)
 [![Feature branch CI](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml)
+[![Health Check & Buddy Deployment](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/health-check-and-buddy.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/health-check-and-buddy.yml)
+[![Deploy Buddy Instance](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/deploy-buddy.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/deploy-buddy.yml)
 [![Integration Tests](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml)
 
 This repo packages **Openclaw** for Railway with a small **/setup** web wizard so users can deploy and onboard **without running any commands**.
