@@ -93,3 +93,20 @@ jobs:
           fi
 
           echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
+
+      - name: Trigger Health Check & Buddy (after successful redeploy)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('🔍 Triggering health check and buddy deployment...');
+            
+            github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'health-check-and-buddy.yml',
+              ref: 'main'
+            });
+            
+            console.log('✅ Health check & buddy workflow triggered');
