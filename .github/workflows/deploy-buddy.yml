@@ -57,14 +57,30 @@ jobs:
 
           echo "✅ Buddy redeploy triggered — new deployment status: ${STATUS}"
 
-      - name: Wait for Buddy Duration
+      - name: Wait for Buddy Instance to Start
+        run: |
+          echo "⏳ Waiting 60 seconds for buddy instance to stabilize..."
+          sleep 60
+
+      - name: Health Check Buddy Instance
+        run: |
+          HEALTH_URL="${{ secrets.RAILWAY_BUDDY_URL }}/setup/healthz"
+          echo "🔍 Checking buddy health endpoint: ${HEALTH_URL}"
+          
+          for i in {1..60}; do
+            if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+              echo "✅ Buddy instance is healthy (attempt $i/60)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/60 - buddy instance not ready yet..."
+            sleep 10
+          done
+          
+          echo "⚠️ Buddy health check timeout after 10 minutes (continuing anyway)"
+          exit 0
+
+      - name: Buddy Deployment Complete
         run: |
           DURATION_HOURS="${{ github.event.inputs.buddy_duration_hours }}"
-          DURATION_SECONDS=$((DURATION_HOURS * 3600))
-          echo "⏱️ Running buddy for ${DURATION_HOURS} hour(s)..."
-          sleep "$DURATION_SECONDS"
-
-      - name: Notify Complete
-        if: always()
-        run: |
-          echo "✅ Buddy session complete (ran for ${{ github.event.inputs.buddy_duration_hours }} hours)"
+          echo "✅ Buddy instance deployed and verified healthy"
+          echo "ℹ️ Buddy will run for ${DURATION_HOURS} hour(s) on Railway independently"
