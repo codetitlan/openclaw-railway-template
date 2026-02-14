@@ -6,6 +6,10 @@ on:
     types: [completed]
     branches: [main]
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   # Health check for primary instance after successful deployment
   health-check:
