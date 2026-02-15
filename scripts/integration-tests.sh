@@ -70,14 +70,27 @@ echo "Configured services:"
 [ -n "$TELEGRAM_BOT_TOKEN" ] && echo "  ✓ Telegram" || echo "  ⊘ Telegram"
 [ -n "$ANTHROPIC_API_KEY" ] && echo "  ✓ Anthropic" || echo "  ⊘ Anthropic"
 [ -n "$GITHUB_TOKEN" ] && echo "  ✓ GitHub" || echo "  ⊘ GitHub"
+echo "  ✓ Himalaya" # Always available in container
+echo ""
+
+# Test 0: Himalaya Installation
+echo -e "${YELLOW}[0/4] Testing Himalaya installation...${NC}"
+if command -v himalaya &> /dev/null; then
+  HIMALAYA_VERSION=$(himalaya --version)
+  echo -e "${GREEN}✓ Himalaya installed: ${HIMALAYA_VERSION}${NC}"
+  HIMALAYA_OK=1
+else
+  echo -e "${RED}✗ Himalaya not found in PATH${NC}"
+  HIMALAYA_OK=0
+fi
 echo ""
 
 # Test 1: Telegram Bot Connectivity
 if [ $SKIP_TELEGRAM_TEST -eq 1 ]; then
-  echo -e "${YELLOW}[1/3] Skipping Telegram test (SKIP_TELEGRAM_TEST=1)${NC}"
+  echo -e "${YELLOW}[1/4] Skipping Telegram test (SKIP_TELEGRAM_TEST=1)${NC}"
   TELEGRAM_OK=1
 else
-  echo -e "${YELLOW}[1/3] Testing Telegram bot token...${NC}"
+  echo -e "${YELLOW}[1/4] Testing Telegram bot token...${NC}"
   if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
     echo -e "${RED}✗ TELEGRAM_BOT_TOKEN not set${NC}"
     TELEGRAM_OK=0
@@ -100,10 +113,10 @@ echo ""
 
 # Test 2: Claude API Connectivity
 if [ $SKIP_CLAUDE_TEST -eq 1 ]; then
-  echo -e "${YELLOW}[2/3] Skipping Claude test (SKIP_CLAUDE_TEST=1)${NC}"
+  echo -e "${YELLOW}[2/4] Skipping Claude test (SKIP_CLAUDE_TEST=1)${NC}"
   CLAUDE_OK=1
 else
-  echo -e "${YELLOW}[2/3] Testing Anthropic/Claude API...${NC}"
+  echo -e "${YELLOW}[2/4] Testing Anthropic/Claude API...${NC}"
   if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo -e "${RED}✗ ANTHROPIC_API_KEY not set${NC}"
     CLAUDE_OK=0
@@ -139,10 +152,10 @@ echo ""
 
 # Test 3: GitHub API Connectivity
 if [ $SKIP_GITHUB_TEST -eq 1 ]; then
-  echo -e "${YELLOW}[3/3] Skipping GitHub test (SKIP_GITHUB_TEST=1)${NC}"
+  echo -e "${YELLOW}[3/4] Skipping GitHub test (SKIP_GITHUB_TEST=1)${NC}"
   GITHUB_OK=1
 else
-  echo -e "${YELLOW}[3/3] Testing GitHub API...${NC}"
+  echo -e "${YELLOW}[3/4] Testing GitHub API...${NC}"
   if [ -z "$GITHUB_PAT" ]; then
     echo -e "${YELLOW}⚠ GITHUB_PAT not set (optional)${NC}"
     GITHUB_OK=1
@@ -175,13 +188,14 @@ echo ""
 
 # Summary
 echo "========== TEST SUMMARY =========="
+[ $HIMALAYA_OK -eq 1 ] && echo -e "${GREEN}✓ Himalaya${NC}" || echo -e "${RED}✗ Himalaya${NC}"
 [ $TELEGRAM_OK -eq 1 ] && echo -e "${GREEN}✓ Telegram${NC}" || echo -e "${RED}✗ Telegram${NC}"
 [ $CLAUDE_OK -eq 1 ] && echo -e "${GREEN}✓ Claude API${NC}" || echo -e "${RED}✗ Claude API${NC}"
 [ $GITHUB_OK -eq 1 ] && echo -e "${GREEN}✓ GitHub API${NC}" || echo -e "${RED}✗ GitHub API${NC}"
 echo ""
 
 # Exit code
-if [ $TELEGRAM_OK -eq 1 ] && [ $CLAUDE_OK -eq 1 ] && [ $GITHUB_OK -eq 1 ]; then
+if [ $HIMALAYA_OK -eq 1 ] && [ $TELEGRAM_OK -eq 1 ] && [ $CLAUDE_OK -eq 1 ] && [ $GITHUB_OK -eq 1 ]; then
   echo -e "${GREEN}All integration tests passed!${NC}"
   exit 0
 else

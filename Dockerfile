@@ -60,6 +60,10 @@ RUN apt-get update \
     sudo \
   && rm -rf /var/lib/apt/lists/*
 
+# Install Himalaya (download prebuilt binary from GitHub releases)
+RUN curl -fsSL https://github.com/pimalaya/himalaya/releases/download/v1.1.0/himalaya.x86_64-linux.tgz \
+  | tar -xz -C /usr/local/bin && chmod +x /usr/local/bin/himalaya
+
 # Install Tailscale
 RUN curl -fsSL https://tailscale.com/install.sh | sh
 
