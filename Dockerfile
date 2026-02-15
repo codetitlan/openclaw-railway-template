@@ -60,8 +60,8 @@ RUN apt-get update \
     sudo \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Himalaya via Homebrew (run as linuxbrew user, pre-built binary)
-RUN sudo -u linuxbrew /home/linuxbrew/.linuxbrew/bin/brew install himalaya
+# Install Himalaya via Homebrew (pre-built binary, no compile issues)
+RUN /home/linuxbrew/.linuxbrew/bin/brew install himalaya
 
 # Install Tailscale
 RUN curl -fsSL https://tailscale.com/install.sh | sh
