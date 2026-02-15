@@ -58,7 +58,12 @@ RUN apt-get update \
     python3 \
     pkg-config \
     sudo \
+    rustc \
+    cargo \
   && rm -rf /var/lib/apt/lists/*
+
+# Install Himalaya (terminal mail client)
+RUN cargo install himalaya
 
 # Install Tailscale
 RUN curl -fsSL https://tailscale.com/install.sh | sh
