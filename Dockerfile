@@ -60,10 +60,8 @@ RUN apt-get update \
     sudo \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Rust via rustup (latest toolchain for 2024 edition support)
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable && \
-    . $HOME/.cargo/env && \
-    cargo install himalaya
+# Install Himalaya via Homebrew (pre-built binary, no compile issues)
+RUN /home/linuxbrew/.linuxbrew/bin/brew install himalaya
 
 # Install Tailscale
 RUN curl -fsSL https://tailscale.com/install.sh | sh
