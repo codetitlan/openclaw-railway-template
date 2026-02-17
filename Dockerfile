@@ -106,14 +106,20 @@ LABEL org.opencontainers.image.created=${BUILD_DATE}
 LABEL org.opencontainers.image.revision=${GIT_SHA}
 
 ENV PORT=8080
-EXPOSE 8080
+ENV HEALTH_CHECK_PORT=8888
+ENV HEALTH_CHECK_PATH=/health
+
+EXPOSE 8080 8888
 
 # OpenClaw optimization defaults (tuned for 120k context window)
 ENV OPENCLAW_CONVERSATION_MAX_MESSAGES=20
 ENV OPENCLAW_CONVERSATION_MAX_TOKENS=50000
 ENV OPENCLAW_ENABLE_PROMPT_CACHING=true
 
+# Docker HEALTHCHECK using the dedicated health check endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD curl -f http://localhost:8080/ || exit 1
+  CMD curl -f http://localhost:8888${HEALTH_CHECK_PATH:-/health} || exit 1
 
-CMD ["node", "src/server.js"]
+RUN chmod +x scripts/start.sh
+
+CMD ["bash", "scripts/start.sh"]
