@@ -93,3 +93,35 @@ jobs:
           fi
 
           echo "✅ Redeploy triggered — new deployment status: ${STATUS}"
+
+      - name: Wait for Primary Instance to Start
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != ''
+        run: |
+          echo "⏳ Waiting 60 seconds for primary instance to stabilize..."
+          sleep 60
+
+      - name: Health Check Primary Instance
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.RAILWAY_API_TOKEN != ''
+        env:
+          RAILWAY_PRIMARY_URL: ${{ secrets.RAILWAY_PRIMARY_URL }}
+        run: |
+          if [ -z "$RAILWAY_PRIMARY_URL" ]; then
+            echo "⚠️ RAILWAY_PRIMARY_URL not configured, skipping health check"
+            exit 0
+          fi
+
+          HEALTH_URL="${RAILWAY_PRIMARY_URL}:8888/health"
+          echo "🔍 Checking primary instance health: ${HEALTH_URL}"
+          
+          for i in {1..30}; do
+            if curl -sf "$HEALTH_URL" | jq -e '.status' > /dev/null 2>&1; then
+              HEALTH_STATUS=$(curl -sf "$HEALTH_URL" | jq -r '.status')
+              echo "✅ Primary instance is $HEALTH_STATUS (attempt $i/30)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i/30 - primary instance not ready yet..."
+            sleep 10
+          done
+          
+          echo "⚠️ Primary health check timeout after 5 minutes (continuing anyway)"
+          exit 0

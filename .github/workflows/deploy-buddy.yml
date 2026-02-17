@@ -64,12 +64,20 @@ jobs:
 
       - name: Health Check Buddy Instance
         run: |
-          HEALTH_URL="${{ secrets.RAILWAY_BUDDY_URL }}/setup/healthz"
-          echo "🔍 Checking buddy health endpoint: ${HEALTH_URL}"
+          RAILWAY_BUDDY_URL="${{ secrets.RAILWAY_BUDDY_URL }}"
+          
+          if [ -z "$RAILWAY_BUDDY_URL" ]; then
+            echo "⚠️ RAILWAY_BUDDY_URL not configured, skipping health check"
+            exit 0
+          fi
+
+          HEALTH_URL="${RAILWAY_BUDDY_URL}:8888/health"
+          echo "🔍 Checking buddy instance health: ${HEALTH_URL}"
           
           for i in {1..60}; do
-            if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-              echo "✅ Buddy instance is healthy (attempt $i/60)"
+            if curl -sf "$HEALTH_URL" | jq -e '.status' > /dev/null 2>&1; then
+              HEALTH_STATUS=$(curl -sf "$HEALTH_URL" | jq -r '.status')
+              echo "✅ Buddy instance is $HEALTH_STATUS (attempt $i/60)"
               exit 0
             fi
             echo "⏳ Attempt $i/60 - buddy instance not ready yet..."
