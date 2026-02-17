@@ -82,6 +82,47 @@ for script in "${SCRIPTS[@]}"; do
   fi
 done
 
+# Test 7: Safety-first features
+echo -e "${YELLOW}[Test 7] Safety-first restoration logic${NC}"
+SAFETY_OK=true
+
+# Check restore script has "only restore if necessary" logic
+if grep -q "is_config_healthy" scripts/himalaya-restore.sh; then
+  echo -e "${GREEN}✓ Restore checks if config already healthy${NC}"
+else
+  echo -e "${RED}✗ Missing health check before restore${NC}"
+  SAFETY_OK=false
+fi
+
+# Check restore prefers backup over env vars
+if grep -q "Stage 1.*backup\|Stage 1.*Backup" scripts/himalaya-restore.sh && \
+   grep -q "Stage 2.*environment\|Stage 2.*Environment" scripts/himalaya-restore.sh; then
+  echo -e "${GREEN}✓ Restore prefers backups over env vars${NC}"
+else
+  echo -e "${RED}✗ Restore logic may not prefer backups${NC}"
+  SAFETY_OK=false
+fi
+
+# Check restore falls back to env vars
+if grep -q "HIMALAYA_EMAIL\|HIMALAYA_PASSWORD" scripts/himalaya-restore.sh; then
+  echo -e "${GREEN}✓ Restore can use env vars as fallback${NC}"
+else
+  echo -e "${RED}✗ Missing env var fallback${NC}"
+  SAFETY_OK=false
+fi
+
+# Check restore verifies connection
+if grep -q "test_connection\|himalaya envelope list" scripts/himalaya-restore.sh; then
+  echo -e "${GREEN}✓ Restore tests connection before committing${NC}"
+else
+  echo -e "${RED}✗ Missing connection verification${NC}"
+  SAFETY_OK=false
+fi
+
+if [[ "$SAFETY_OK" == false ]]; then
+  TEST_RESULTS=$((TEST_RESULTS + 1))
+fi
+
 echo ""
 if [[ $TEST_RESULTS -eq 0 ]]; then
   echo -e "${GREEN}✅ All tests passed!${NC}"

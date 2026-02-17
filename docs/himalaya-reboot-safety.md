@@ -17,7 +17,24 @@ The solution consists of:
 ✅ **No Hardcoded Secrets** - Uses environment variables for credentials  
 ✅ **Backup Strategy** - Stores backups in persistent `/data/workspace` volume  
 ✅ **Health Monitoring** - Auto-detects and fixes broken configs  
-✅ **Tested** - Includes verification script and smoke tests  
+✅ **Safety-First** - Only restores when necessary, prefers backups, uses env vars as fallback  
+✅ **Tested** - Includes verification script and smoke tests
+
+## Safety-First Philosophy
+
+This implementation follows a conservative, non-destructive approach:
+
+1. **Never overwrite working config** — If connection is healthy, don't touch anything
+2. **Prefer backups** — Always restore from backup files first (most reliable)
+3. **Use env vars as fallback** — Only generate new config from environment variables if backup unavailable
+4. **Test before committing** — All operations verify connection before reporting success
+5. **Clear error messages** — If restoration fails, provides actionable next steps
+
+This means:
+- Safe to run scripts repeatedly (idempotent)
+- Won't accidentally break a working setup
+- Automatic recovery without manual intervention
+- Transparent about what succeeded or failed  
 
 ## Quick Start
 
@@ -58,26 +75,35 @@ himalaya envelope list --limit 5
 ```
 himalaya-init.sh
   ├─ Creates /root/.config/himalaya/ (ephemeral, lost on reboot)
-  ├─ Generates config.toml from template with email from env var
-  ├─ Stores password in .password file (read-only)
-  ├─ Tests connection to verify it works
+  ├─ Generates config.toml from template with email from HIMALAYA_EMAIL
+  ├─ Stores password in .password file (read-only, from HIMALAYA_PASSWORD)
+  ├─ Tests connection to verify credentials work
   └─ Backs up config + password to /data/workspace/.himalaya-backup/ (persistent)
 ```
 
-### After Reboot
+### After Reboot (Safety-First Flow)
 
 ```
 Container restart
   ↓
-/root/.config/himalaya/ is gone (ephemeral container filesystem)
+/root/.config/himalaya/ is gone (ephemeral filesystem)
   ↓
 himalaya-healthcheck.sh runs (via cron or manual)
   ↓
-Detects missing config
+Check current config health
+  ├─ If healthy (files exist + connection works) → STOP, no action needed ✓
+  └─ If missing or broken → Proceed to restoration
   ↓
-himalaya-restore.sh restores from backup
-  ↓
-Connection verified
+himalaya-restore.sh (auto mode)
+  ├─ Stage 1: Try restore from backup
+  │  ├─ If backup exists and connection works → SUCCESS ✓
+  │  └─ If backup exists but connection fails → Try Stage 2
+  ├─ Stage 2: Try restore from env vars
+  │  ├─ If HIMALAYA_EMAIL & HIMALAYA_PASSWORD set → Generate config
+  │  ├─ Test connection
+  │  ├─ If works → Create backup for next time ✓
+  │  └─ If fails → ERROR (need manual intervention)
+  └─ If neither available → ERROR with recovery instructions
   ↓
 ✅ Ready to use
 ```
@@ -119,21 +145,51 @@ HIMALAYA_EMAIL="user@mailbox.org" HIMALAYA_PASSWORD="pass" \
 
 Restore config from backup (typically called after reboot).
 
+**Safety-First Approach:**
+- ✅ Only restores if necessary (won't clobber working config)
+- ✅ Prefers backup files (most reliable)
+- ✅ Falls back to environment variables if backup missing
+- ✅ Creates new backup from env vars if needed
+
 **Requirements:**
-- Backup files must exist in `/data/workspace/.himalaya-backup/`
-- Requires no environment variables (uses existing backups)
+Either:
+- Backup files in `/data/workspace/.himalaya-backup/`, OR
+- Environment variables: `HIMALAYA_EMAIL`, `HIMALAYA_PASSWORD`
 
 **What it does:**
-1. Verifies backups exist
-2. Creates /root/.config/himalaya/ directory
-3. Copies config and password from backup
-4. Sets correct permissions (600)
-5. Verifies connection works
-6. Reports status
+1. **Safety Check**: Tests if config is already healthy (skips if working)
+2. **Stage 1 - Backup**: Tries to restore from `/data/workspace/.himalaya-backup/`
+   - If successful and connection works: Done ✓
+   - If connection fails: Tries env vars
+3. **Stage 2 - Env Vars**: Falls back to environment variables if backup unavailable
+   - Generates config from template
+   - Creates new backup for future use
+   - Tests connection
+4. **Fallback**: If neither available, returns error with recovery instructions
+
+**Modes:**
+
+```bash
+# Auto (default): Only restore if config is missing or broken
+bash /data/workspace/scripts/himalaya-restore.sh
+
+# Force: Always restore (useful for testing or credential rotation)
+bash /data/workspace/scripts/himalaya-restore.sh force
+
+# Check: Only test, don't restore
+bash /data/workspace/scripts/himalaya-restore.sh check
+```
 
 **Usage:**
 ```bash
+# Normal use (auto-detects if needed)
 bash /data/workspace/scripts/himalaya-restore.sh
+
+# Force restore (credential update)
+bash /data/workspace/scripts/himalaya-restore.sh force
+
+# Check without modifying
+bash /data/workspace/scripts/himalaya-restore.sh check
 ```
 
 ### himalaya-healthcheck.sh
@@ -207,44 +263,111 @@ None currently.
 
 ### "Failed to connect to Himalaya"
 
+When a connection test fails:
+
 ```bash
-# Verify credentials
-echo $HIMALAYA_EMAIL
-echo $HIMALAYA_PASSWORD
+# 1. Verify credentials are set
+echo "Email: $HIMALAYA_EMAIL"
+echo "Password: ${HIMALAYA_PASSWORD:+***}"  # Shows *** if set
 
-# Test mailbox.org connectivity
-timeout 5 nc -zv imap.mailbox.org 993
-timeout 5 nc -zv smtp.mailbox.org 587
+# 2. Test network connectivity to mailbox.org
+timeout 5 nc -zv imap.mailbox.org 993  # Should succeed
+timeout 5 nc -zv smtp.mailbox.org 587  # Should succeed
 
-# Check config syntax
+# 3. Check config file for syntax errors
 cat /root/.config/himalaya/config.toml
+
+# 4. Test with verbose output
+himalaya envelope list -v
 ```
 
-### "Backup files not found"
+### "Backup files not found in restoration"
 
-Run initialization first:
+**This is a safety feature**, not an error. The script will:
+1. Check if environment variables are set (`HIMALAYA_EMAIL`, `HIMALAYA_PASSWORD`)
+2. If set: Generate config from template and create new backup
+3. If not set: Fail with clear instructions
+
+**To recover:**
+
+Option A - Set environment variables and restore:
+```bash
+export HIMALAYA_EMAIL="your-email@mailbox.org"
+export HIMALAYA_PASSWORD="your-password"
+bash /data/workspace/scripts/himalaya-restore.sh
+```
+
+Option B - Re-initialize (creates fresh backup):
 ```bash
 HIMALAYA_EMAIL="..." HIMALAYA_PASSWORD="..." \
   bash /data/workspace/scripts/himalaya-init.sh
 ```
 
-### "Config exists but not working"
+### "Config exists but connection is broken"
 
-Restore from backup:
+The restore script will automatically detect this and attempt recovery:
+
 ```bash
-bash /data/workspace/scripts/himalaya-restore.sh
-```
-
-### After reboot, config is missing
-
-Run health check to restore:
-```bash
+# Automatic (preferred)
 bash /data/workspace/scripts/himalaya-healthcheck.sh
+
+# Or manual restore (safe, won't clobber working config)
+bash /data/workspace/scripts/himalaya-restore.sh
+
+# Force restore if normal restore fails
+bash /data/workspace/scripts/himalaya-restore.sh force
 ```
 
-Or restore manually:
+### "After reboot, config is missing"
+
+This is expected and handled automatically:
+
 ```bash
+# Via cron (automatic, runs hourly)
+# No action needed — script runs via cron job
+
+# Manual restoration
 bash /data/workspace/scripts/himalaya-restore.sh
+```
+
+### "I need to update my password"
+
+Rotate credentials without reinitializing:
+
+```bash
+export HIMALAYA_PASSWORD="new-password"
+bash /data/workspace/scripts/himalaya-restore.sh force
+```
+
+This will:
+1. Generate config with existing email (from existing config or env var)
+2. Use new password
+3. Test connection
+4. Update backup with new password
+
+### "Restoration fails even with env vars set"
+
+If both backup restore and env var restore fail:
+
+```bash
+# 1. Verify credentials are actually correct
+himalaya envelope list -v
+
+# 2. Check if mailbox.org IMAP/SMTP is accessible
+nslookup imap.mailbox.org
+nslookup smtp.mailbox.org
+
+# 3. Verify password is not expired (mailbox.org web login)
+# - Log in to https://mailbox.org
+# - Check account status
+
+# 4. If credentials were recently changed:
+# - Wait a few minutes for propagation
+# - Or use an app-specific password instead
+
+# 5. Manual debug of config:
+cat /root/.config/himalaya/config.toml
+cat /root/.config/himalaya/.password
 ```
 
 ## Testing
