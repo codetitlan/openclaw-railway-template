@@ -5,7 +5,12 @@
  * without depending on the main application server.
  */
 
-const http = require('http');
+import http from 'http';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Configuration
 const HEALTH_CHECK_PORT = process.env.HEALTH_CHECK_PORT || 8888;
@@ -187,8 +192,8 @@ function startHealthCheckServer() {
 }
 
 // Only start if this is the main module
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   startHealthCheckServer();
 }
 
-module.exports = { startHealthCheckServer, buildHealthResponse };
+export { startHealthCheckServer, buildHealthResponse };
