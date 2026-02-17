@@ -64,10 +64,8 @@ function resolveGatewayToken() {
 
   if (envTok) {
     console.log(`[token] ✓ Using token from OPENCLAW_GATEWAY_TOKEN env variable`);
-    console.log(`[token]   First 16 chars: ${envTok.slice(0, 16)}...`);
-    if (DEBUG) {
-      console.log(`[token]   Full token: ${envTok}`);
-    }
+    debug(`[token]   First 16 chars: ${envTok.slice(0, 16)}...`);
+    debug(`[token]   Full token: ${envTok}`);
     return envTok;
   }
 
@@ -79,7 +77,7 @@ function resolveGatewayToken() {
     const existing = fs.readFileSync(tokenPath, "utf8").trim();
     if (existing) {
       console.log(`[token] ✓ Using token from persisted file`);
-      console.log(`[token]   First 16 chars: ${existing.slice(0, 8)}...`);
+      debug(`[token]   First 8 chars: ${existing.slice(0, 8)}...`);
       return existing;
     }
   } catch (err) {
@@ -87,7 +85,8 @@ function resolveGatewayToken() {
   }
 
   const generated = crypto.randomBytes(32).toString("hex");
-  console.log(`[token] ⚠️  Generating new random token (${generated.slice(0, 8)}...)`);
+  console.log(`[token] ⚠️  Generating new random token`);
+  debug(`[token]   First 8 chars: ${generated.slice(0, 8)}...`);
   try {
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(tokenPath, generated, { encoding: "utf8", mode: 0o600 });
@@ -364,7 +363,8 @@ async function startGateway() {
   // Sync wrapper token to openclaw.json before every gateway start.
   // This ensures the gateway's config-file token matches what the wrapper injects via proxy.
   console.log(`[gateway] ========== GATEWAY START TOKEN SYNC ==========`);
-  console.log(`[gateway] Syncing wrapper token to config: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (len: ${OPENCLAW_GATEWAY_TOKEN.length})`);
+  console.log(`[gateway] Syncing wrapper token to config (length: ${OPENCLAW_GATEWAY_TOKEN.length})`);
+  debug(`[gateway] Token preview: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
 
   const syncResult = await runCmd(
     OPENCLAW_NODE,
@@ -387,15 +387,16 @@ async function startGateway() {
     const configToken = config?.gateway?.auth?.token;
 
     console.log(`[gateway] Token verification:`);
-    console.log(`[gateway]   Wrapper: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (len: ${OPENCLAW_GATEWAY_TOKEN.length})`);
-    console.log(`[gateway]   Config:  ${configToken?.slice(0, 16)}... (len: ${configToken?.length || 0})`);
+    debug(`[gateway]   Wrapper: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (len: ${OPENCLAW_GATEWAY_TOKEN.length})`);
+    debug(`[gateway]   Config:  ${configToken?.slice(0, 16)}... (len: ${configToken?.length || 0})`);
+    console.log(`[gateway]   Token lengths - Wrapper: ${OPENCLAW_GATEWAY_TOKEN.length}, Config: ${configToken?.length || 0}`);
 
     if (configToken !== OPENCLAW_GATEWAY_TOKEN) {
       console.error(`[gateway] ✗ Token mismatch detected!`);
-      console.error(`[gateway]   Full wrapper: ${OPENCLAW_GATEWAY_TOKEN}`);
-      console.error(`[gateway]   Full config:  ${configToken || 'null'}`);
+      debug(`[gateway]   Full wrapper: ${OPENCLAW_GATEWAY_TOKEN}`);
+      debug(`[gateway]   Full config:  ${configToken || 'null'}`);
       throw new Error(
-        `Token mismatch: wrapper has ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... but config has ${(configToken || 'null')?.slice?.(0, 16)}...`
+        `Token mismatch: tokens don't match (enable DEBUG logging for details)`
       );
     }
     console.log(`[gateway] ✓ Token verification PASSED`);
@@ -893,11 +894,11 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
     const payload = req.body || {};
     const onboardArgs = buildOnboardArgs(payload);
 
-    // DIAGNOSTIC: Log token we're passing to onboard
-    console.log(`[onboard] ========== TOKEN DIAGNOSTIC START ==========`);
-    console.log(`[onboard] Wrapper token (from env/file/generated): ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (length: ${OPENCLAW_GATEWAY_TOKEN.length})`);
-    console.log(`[onboard] Onboard command args include: --gateway-token ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
-    console.log(`[onboard] Full onboard command: node ${clawArgs(onboardArgs).join(' ').replace(OPENCLAW_GATEWAY_TOKEN, OPENCLAW_GATEWAY_TOKEN.slice(0, 16) + '...')}`);
+    // DIAGNOSTIC: Log token we're passing to onboard (DEBUG only)
+    debug(`[onboard] ========== TOKEN DIAGNOSTIC START ==========`);
+    debug(`[onboard] Wrapper token (from env/file/generated): ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (length: ${OPENCLAW_GATEWAY_TOKEN.length})`);
+    debug(`[onboard] Onboard command args include: --gateway-token ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
+    debug(`[onboard] Full onboard command: node ${clawArgs(onboardArgs).join(' ').replace(OPENCLAW_GATEWAY_TOKEN, OPENCLAW_GATEWAY_TOKEN.slice(0, 16) + '...')}`);
 
     const onboard = await runCmd(OPENCLAW_NODE, clawArgs(onboardArgs));
 
@@ -905,18 +906,21 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
 
     const ok = onboard.code === 0 && isConfigured();
 
-    // DIAGNOSTIC: Check what token onboard actually wrote to config
+    // DIAGNOSTIC: Check what token onboard actually wrote to config (DEBUG only)
     if (ok) {
       try {
         const configAfterOnboard = JSON.parse(fs.readFileSync(configPath(), "utf8"));
         const tokenAfterOnboard = configAfterOnboard?.gateway?.auth?.token;
-        console.log(`[onboard] Token in config AFTER onboard: ${tokenAfterOnboard?.slice(0, 16)}... (length: ${tokenAfterOnboard?.length || 0})`);
-        console.log(`[onboard] Token match: ${tokenAfterOnboard === OPENCLAW_GATEWAY_TOKEN ? '✓ MATCHES' : '✗ MISMATCH!'}`);
-        if (tokenAfterOnboard !== OPENCLAW_GATEWAY_TOKEN) {
+        debug(`[onboard] Token in config AFTER onboard: ${tokenAfterOnboard?.slice(0, 16)}... (length: ${tokenAfterOnboard?.length || 0})`);
+        const tokensMatch = tokenAfterOnboard === OPENCLAW_GATEWAY_TOKEN;
+        console.log(`[onboard] Token match: ${tokensMatch ? '✓ MATCHES' : '✗ MISMATCH!'}`);
+        if (!tokensMatch) {
           console.log(`[onboard] ⚠️  PROBLEM: onboard command ignored --gateway-token flag and wrote its own token!`);
           extra += `\n[WARNING] onboard wrote different token than expected\n`;
-          extra += `  Expected: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...\n`;
-          extra += `  Got:      ${tokenAfterOnboard?.slice(0, 16)}...\n`;
+          if (DEBUG) {
+            extra += `  Expected: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...\n`;
+            extra += `  Got:      ${tokenAfterOnboard?.slice(0, 16)}...\n`;
+          }
         }
       } catch (err) {
         console.error(`[onboard] Could not check config after onboard: ${err}`);
@@ -927,7 +931,8 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
     if (ok) {
       // Ensure gateway token is written into config so the browser UI can authenticate reliably.
       // (We also enforce loopback bind since the wrapper proxies externally.)
-      console.log(`[onboard] Now syncing wrapper token to config (${OPENCLAW_GATEWAY_TOKEN.slice(0, 8)}...)`);
+      console.log(`[onboard] Now syncing wrapper token to config`);
+      debug(`[onboard] Token preview: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 8)}...`);
 
       await runCmd(OPENCLAW_NODE, clawArgs(["config", "set", "gateway.mode", "local"]));
       await runCmd(
@@ -962,18 +967,19 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
         const configToken = config?.gateway?.auth?.token;
 
         console.log(`[onboard] Token verification after sync:`);
-        console.log(`[onboard]   Wrapper token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (len: ${OPENCLAW_GATEWAY_TOKEN.length})`);
-        console.log(`[onboard]   Config token:  ${configToken?.slice(0, 16)}... (len: ${configToken?.length || 0})`);
+        debug(`[onboard]   Wrapper token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... (len: ${OPENCLAW_GATEWAY_TOKEN.length})`);
+        debug(`[onboard]   Config token:  ${configToken?.slice(0, 16)}... (len: ${configToken?.length || 0})`);
+        console.log(`[onboard]   Token lengths - Wrapper: ${OPENCLAW_GATEWAY_TOKEN.length}, Config: ${configToken?.length || 0}`);
 
         if (configToken !== OPENCLAW_GATEWAY_TOKEN) {
           console.error(`[onboard] ✗ ERROR: Token mismatch after config set!`);
-          if (DEBUG) {
-            console.error(`[onboard]   Full wrapper token: ${OPENCLAW_GATEWAY_TOKEN}`);
-            console.error(`[onboard]   Full config token:  ${configToken || 'null'}`);
-          }
+          debug(`[onboard]   Full wrapper token: ${OPENCLAW_GATEWAY_TOKEN}`);
+          debug(`[onboard]   Full config token:  ${configToken || 'null'}`);
           extra += `\n[ERROR] Token verification failed! Config has different token than wrapper.\n`;
-          extra += `  Wrapper: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...\n`;
-          extra += `  Config:  ${configToken?.slice(0, 16)}...\n`;
+          if (DEBUG) {
+            extra += `  Wrapper: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...\n`;
+            extra += `  Config:  ${configToken?.slice(0, 16)}...\n`;
+          }
         } else {
           console.log(`[onboard] ✓ Token verification PASSED - tokens match!`);
           extra += `\n[onboard] ✓ Gateway token synced successfully\n`;
