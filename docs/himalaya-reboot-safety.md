@@ -30,11 +30,32 @@ This implementation follows a conservative, non-destructive approach:
 4. **Test before committing** — All operations verify connection before reporting success
 5. **Clear error messages** — If restoration fails, provides actionable next steps
 
+### Idempotency Guarantee
+
+All scripts are **fully idempotent** and safe to run repeatedly:
+
+**himalaya-init.sh**
+- Creates config + backup
+- Safe to run multiple times (updates existing config)
+- Ideal for credential rotation
+
+**himalaya-restore.sh**
+- Checks if config already healthy → exits immediately if working
+- Only restores when necessary
+- Safe to call from cron daily or hourly
+
+**himalaya-healthcheck.sh**
+- Detects healthy config and skips restoration
+- Only restores if broken
+- Perfect for automated cron jobs
+- No-op if already working
+
 This means:
 - Safe to run scripts repeatedly (idempotent)
 - Won't accidentally break a working setup
 - Automatic recovery without manual intervention
-- Transparent about what succeeded or failed  
+- Transparent about what succeeded or failed
+- Perfect for daily cron jobs (runs once, no duplicates)  
 
 ## Quick Start
 
@@ -67,6 +88,27 @@ Expected output:
 ```bash
 himalaya envelope list --limit 5
 ```
+
+### Step 4: Set Up Daily Health Check (Recommended)
+
+To automatically verify config after reboot:
+
+```bash
+curl -X POST http://localhost:3000/api/cron/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Himalaya Daily Health Check",
+    "schedule": {"kind": "cron", "expr": "0 3 * * *", "tz": "UTC"},
+    "payload": {
+      "kind": "systemEvent",
+      "text": "Running Himalaya daily health check..."
+    },
+    "sessionTarget": "main",
+    "enabled": true
+  }'
+```
+
+This runs once daily at 3 AM UTC and automatically restores config if needed after a reboot.
 
 ## How It Works
 
@@ -194,22 +236,32 @@ bash /data/workspace/scripts/himalaya-restore.sh check
 
 ### himalaya-healthcheck.sh
 
-Check if config is healthy, restore if broken.
+Check if config is healthy, restore only if necessary.
+
+**Idempotent & Safe:**
+- ✅ Safe to run repeatedly (won't change anything if already healthy)
+- ✅ Detects working config and skips restoration
+- ✅ Only restores if config missing or connection broken
 
 **Typical usage:**
-- Run periodically via cron
-- Run after system startup
-- Called manually when troubleshooting
+- Run daily via cron (recommended)
+- Run hourly via cron (if faster recovery needed)
+- Run manually when troubleshooting
+- Automatic recovery after reboot (within cron interval)
 
 **What it does:**
-1. Checks if config files exist
-2. Tests connection to mailbox.org
-3. If missing or broken: restores from backup
-4. Reports health status
+1. Tests if config files exist and connection works
+2. If healthy: exits immediately (no changes)
+3. If broken: calls himalaya-restore.sh to recover
+4. Reports status (HEALTHY, RESTORED, or FAILED)
 
 **Usage:**
 ```bash
+# Manual check (idempotent, safe any time)
 bash /data/workspace/scripts/himalaya-healthcheck.sh
+
+# Via cron (runs daily at 3 AM UTC, auto-recovers after reboot)
+# See "Integration with Cron" section for setup
 ```
 
 ### test-himalaya-config.sh
@@ -385,13 +437,47 @@ All tests should pass:
 
 ## Integration with Cron
 
-To automatically restore config after reboot, add a cron job:
+### Recommended: Daily Health Check
+
+To automatically verify Himalaya config is working and restore if needed after reboot:
 
 ```bash
 curl -X POST http://localhost:3000/api/cron/jobs \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Himalaya Auto-Restore",
+    "name": "Himalaya Daily Health Check",
+    "schedule": {"kind": "cron", "expr": "0 3 * * *", "tz": "UTC"},
+    "payload": {
+      "kind": "systemEvent",
+      "text": "Running Himalaya daily health check..."
+    },
+    "sessionTarget": "main",
+    "enabled": true
+  }'
+```
+
+**How it works:**
+- Runs once per day at 3 AM UTC
+- Checks if config is healthy (idempotent, safe to run repeatedly)
+- Only restores if necessary (missing config or broken connection)
+- After reboot: config is restored automatically on next scheduled run
+- No redundant executions (health check ensures skips if already working)
+
+**Why daily:**
+- Covers most reboot scenarios within 24 hours
+- Minimal resource usage (one check per day)
+- Still catches credential rotation or connection issues
+- Reduces unnecessary API calls vs hourly checks
+
+### Alternative: Hourly Health Check (More Aggressive)
+
+If you want faster recovery after reboot (within ~1 hour):
+
+```bash
+curl -X POST http://localhost:3000/api/cron/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Himalaya Hourly Health Check",
     "schedule": {"kind": "every", "everyMs": 3600000},
     "payload": {
       "kind": "systemEvent",
@@ -402,7 +488,7 @@ curl -X POST http://localhost:3000/api/cron/jobs \
   }'
 ```
 
-This runs the health check every hour automatically.
+Choose daily for production (lower cost), hourly for development (faster troubleshooting).
 
 ## Related Documentation
 
