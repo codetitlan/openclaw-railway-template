@@ -7,12 +7,12 @@ All heavy lifting is delegated to [bb-claw/ci-workflows](https://github.com/bb-c
 
 **`ci.yml`** — Continuous integration (all non-main branches + PRs to main)
 
-Calls `node-ci.yml@v1` from ci-workflows. Runs lint and smoke tests on every
+Calls `node-ci.yml@main` from ci-workflows. Runs lint and smoke tests on every
 branch push. Also runs Docker build validation on pull requests to main.
 
 **`cd.yml`** — Continuous deployment (push to `main` only)
 
-Calls `full-pipeline.yml@v1` from ci-workflows. Orchestrates:
+Calls `full-pipeline.yml@main` from ci-workflows. Orchestrates:
 0. Validate pipeline configuration
 1. Build Docker image and push to GHCR
 2. Run smoke tests inside container

@@ -20,7 +20,7 @@ on:
 
 jobs:
   ci:
-    uses: bb-claw/ci-workflows/.github/workflows/node-ci.yml@v1
+    uses: bb-claw/ci-workflows/.github/workflows/node-ci.yml@main
     with:
       node-version: "22"
       lint-command: npm run lint
