@@ -6,7 +6,14 @@ This directory contains workflow definitions for the OpenClaw Railway Template.
 
 **`pipeline.yml`** — Shared CI/CD pipeline from [bb-claw/ci-workflows](https://github.com/bb-claw/ci-workflows)
 
-Orchestrates the full build → test → deploy flow:
+Orchestrates the full build → test → deploy flow with **automatic validation**:
+
+0. **Validate Pipeline** ← NEW (Job 0)
+   - Checks all required variables set
+   - Validates all required secrets configured
+   - Verifies Dockerfile exists
+   - Tests URL accessibility (best-effort)
+
 1. Build Docker image and push to GHCR
 2. Run unit tests inside container
 3. Deploy to primary instance (dev)
@@ -19,6 +26,8 @@ Triggered on:
 - Push to main
 - Pull requests
 - Manual workflow dispatch
+
+**Key Benefit:** Pipeline validation runs automatically as Job 0, catching configuration errors before expensive build/deploy steps. All projects using `full-pipeline.yml@v1` get this validation automatically — no code changes needed!
 
 ## Buddy Deployment
 
