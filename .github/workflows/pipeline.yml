@@ -11,10 +11,10 @@ jobs:
   pipeline:
     uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v1
     with:
-      dev-url: ${{ vars.RAILWAY_PRIMARY_URL || 'https://openclaw-builder-dev3.up.railway.app' }}
-      prod-url: ${{ vars.RAILWAY_BUDDY_URL || 'https://openclaw-buddy-dev3.up.railway.app' }}
-      railway-service-id-dev: ${{ vars.RAILWAY_SERVICE_ID }}
-      railway-service-id-prod: ${{ vars.RAILWAY_BUDDY_SERVICE_ID }}
+      dev-url: ${{ vars.DEV_URL }}
+      prod-url: ${{ vars.PROD_URL }}
+      railway-service-id-dev: ${{ vars.RAILWAY_SERVICE_ID_DEV }}
+      railway-service-id-prod: ${{ vars.RAILWAY_SERVICE_ID_PROD }}
       dockerfile: ./Dockerfile
       health-check-path: /health
       integration-test-command: bash scripts/integration-tests.sh
