@@ -78,7 +78,7 @@ open http://localhost:8080/setup  # password: test
   - **setup.html**: Setup wizard HTML structure
   - **styles.css**: Setup wizard styling (extracted from inline styles)
   - **setup-app.js**: Client-side JS for `/setup` wizard (vanilla JS, no build step)
-- **Dockerfile**: Multi-stage build (builds Openclaw from source, installs wrapper deps)
+- **Dockerfile**: Multi-stage build (builds Openclaw from source, installs wrapper deps). When `OPENCLAW_VERSION` is not set, auto-detects the latest stable GitHub release via a 3-tier cascade: GitHub Releases API → `git ls-remote` tag detection → `main` fallback (with warning)
 
 ### Environment Variables
 
@@ -193,7 +193,7 @@ Edit `buildOnboardArgs()` (src/server.js:442-496) to add new CLI flags or auth p
 - Template must mount a volume at `/data`
 - Must set `SETUP_PASSWORD` in Railway Variables
 - Public networking must be enabled (assigns `*.up.railway.app` domain)
-- Openclaw version is pinned via Docker build arg `OPENCLAW_GIT_REF` (default: `main`)
+- Openclaw version is **auto-detected** at build time (latest stable release); set `OPENCLAW_VERSION` only to pin a specific tag/branch
 
 ## Serena Semantic Coding
 

@@ -1,6 +1,6 @@
-# Migration Guide: Upgrading to Enhanced Moltbot
+# Migration Guide: Upgrading to Enhanced OpenClaw
 
-This guide helps you upgrade from the base clawdbot-railway-template or older moltbot versions to the enhanced version with debug console, config editor, and other features.
+This guide helps you upgrade from the base clawdbot-railway-template or older openclaw versions to the enhanced version with debug console, config editor, and other features.
 
 ## What's New
 
@@ -24,7 +24,7 @@ If you don't have important history:
    - Or use curl: `curl -u user:PASSWORD https://old-app.up.railway.app/setup/export -o backup.tar.gz`
 
 2. **Deploy New Template** to Railway:
-   - Use the moltbot Railway template
+   - Use the openclaw Railway template
    - Set `SETUP_PASSWORD`
    - Mount volume at `/data`
    - Set `OPENCLAW_STATE_DIR=/data/.openclaw`
@@ -48,6 +48,7 @@ If you don't have important history:
 If you want to keep your Railway service:
 
 1. **Backup First** (IMPORTANT!):
+
    ```bash
    # Via curl
    curl -u username:$SETUP_PASSWORD \
@@ -56,7 +57,7 @@ If you want to keep your Railway service:
    ```
 
 2. **Update Repository**:
-   - Fork moltbot-railway-template
+   - Fork openclaw-railway-template
    - Update your Railway service to point to your fork
    - Or: Update GitHub source in Railway settings to this repo
 
@@ -117,6 +118,7 @@ MOLTBOT_CONFIG_PATH     → OPENCLAW_CONFIG_PATH
 ```
 
 **What happens:**
+
 - You'll see warnings in logs: `[env-migration] Detected legacy CLAWDBOT_*, auto-migrating to OPENCLAW_*`
 - The new env vars are used immediately
 - Old env vars still work but are deprecated
@@ -129,10 +131,11 @@ These are also automatic:
 ```bash
 # Old names → New name (auto-renamed on startup)
 /data/.openclaw/clawdbot.json → openclaw.json
-/data/.openclaw/moltbot.json  → openclaw.json
+/data/.openclaw/openclaw.json  → openclaw.json
 ```
 
 **What happens:**
+
 - You'll see warnings in logs: `[config-migration] Renamed legacy config file`
 - Old config file is renamed (not copied)
 - All settings preserved
@@ -158,11 +161,13 @@ After migrating, verify:
 ### Issue: "Token mismatch" after upgrade
 
 **Symptoms:**
+
 - Gateway won't start
 - Control UI shows auth errors
 - Logs show "token_mismatch" errors
 
 **Solution:**
+
 1. Check if you have `OPENCLAW_GATEWAY_TOKEN` set in Railway Variables
 2. If yes: Use Config Editor to verify `gateway.auth.token` matches the env var
 3. If no: Set it now: `openssl rand -hex 32` → paste into Railway Variables
@@ -171,10 +176,12 @@ After migrating, verify:
 ### Issue: Legacy env vars not migrating
 
 **Symptoms:**
+
 - Warnings in logs but features not working
 - STATE_DIR or WORKSPACE_DIR pointing to wrong location
 
 **Solution:**
+
 1. Check Railway logs for migration warnings
 2. Manually set `OPENCLAW_*` variables in Railway Variables
 3. Remove old `CLAWDBOT_*` or `MOLTBOT_*` variables
@@ -183,10 +190,12 @@ After migrating, verify:
 ### Issue: Config file not found
 
 **Symptoms:**
+
 - `/setup` shows unconfigured state
 - Logs show "Config file not found"
 
 **Solution:**
+
 1. Check `/data` volume is mounted correctly
 2. Verify `OPENCLAW_STATE_DIR=/data/.openclaw`
 3. Check if config file exists: Use Debug Console → `ls /data/.openclaw/`
@@ -195,10 +204,12 @@ After migrating, verify:
 ### Issue: Gateway won't start after migration
 
 **Symptoms:**
+
 - `/healthz` shows "Gateway not ready"
 - Logs show gateway errors
 
 **Solution:**
+
 1. Visit `/healthz` to see error details
 2. Run `openclaw doctor` in Debug Console
 3. Check `/setup/api/debug` for full diagnostics
@@ -208,22 +219,27 @@ After migrating, verify:
 ### Issue: Import fails with "/data" error
 
 **Symptoms:**
+
 - Import shows error: "Import requires both STATE_DIR and WORKSPACE_DIR under /data"
 
 **Solution:**
 Set these env vars in Railway Variables:
+
 ```bash
 OPENCLAW_STATE_DIR=/data/.openclaw
 OPENCLAW_WORKSPACE_DIR=/data/workspace
 ```
+
 Then redeploy and try import again.
 
 ### Issue: Import fails with "File too large"
 
 **Symptoms:**
+
 - Import shows error: "File too large: X.XMB (max 250MB)"
 
 **Solution:**
+
 1. Your backup exceeds the 250MB safety limit
 2. Clean up workspace files before exporting:
    - Remove old conversation histories
@@ -234,10 +250,12 @@ Then redeploy and try import again.
 ### Issue: Channels stopped working after migration
 
 **Symptoms:**
+
 - Telegram/Discord not responding
 - Logs show "plugin not enabled" errors
 
 **Solution:**
+
 1. Check if plugins are enabled: Debug Console → `openclaw.plugins.list`
 2. Enable plugins: Debug Console → `openclaw.plugins.enable telegram` (or discord)
 3. Restart gateway: Debug Console → `gateway.restart`
@@ -247,11 +265,13 @@ Then redeploy and try import again.
 If you need to rollback:
 
 ### Option 1: Railway Rollback Feature
+
 1. Go to Railway dashboard
 2. Find the deployment before upgrade
 3. Click "Rollback" button
 
 ### Option 2: Manual Restore
+
 1. **Export backup** from new version first (just in case)
 2. **Redeploy** old version:
    - Update GitHub source to old repo/branch
@@ -271,20 +291,21 @@ If you need to rollback:
 | Auto doctor | ✗ | ✓ |
 | Plugin Management | ✗ | ✓ |
 | Env Migration | ✗ | ✓ (CLAWDBOT/MOLTBOT) |
-| Config Migration | ✗ | ✓ (moltbot/clawdbot.json) |
+| Config Migration | ✗ | ✓ (openclaw/clawdbot.json) |
 | Enhanced Errors | Basic | Detailed with fixes |
 | Security | 755 perms | 700 perms, debug-only logs |
 
 ## Need Help?
 
 - **Check diagnostics**: `/healthz` and `/setup/api/debug`
-- **Report issues**: https://github.com/codetitlan/moltbot-railway-template/issues
-- **Ask in Discord**: https://discord.com/invite/clawd
+- **Report issues**: <https://github.com/codetitlan/openclaw-railway-template/issues>
+- **Ask in Discord**: <https://discord.com/invite/clawd>
 - **Review docs**: README.md, CONTRIBUTING.md, CLAUDE.md
 
 ## Success Stories
 
 If you successfully migrated, we'd love to hear about it! Share your experience:
+
 - Open a GitHub Discussion
 - Post in Discord
 - Help others with migration issues
@@ -292,6 +313,7 @@ If you successfully migrated, we'd love to hear about it! Share your experience:
 ## What's Next?
 
 After successful migration:
+
 1. Explore the Debug Console features
 2. Try the Config Editor
 3. Set up custom providers (if using Ollama/vLLM)

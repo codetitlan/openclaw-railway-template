@@ -17,6 +17,11 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       # Build only (no push). If this fails, the PR breaks container builds.
+      # Note: OPENCLAW_VERSION is intentionally NOT passed here. This exercises
+      # the auto-detection path (GitHub API → git ls-remote → main fallback),
+      # which is the same code path used by one-click Railway deployments.
+      # Do NOT add an OPENCLAW_VERSION build-arg to CI — that would bypass the
+      # detection logic and prevent us from catching regressions in it.
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:

@@ -21,17 +21,40 @@ RUN corepack enable
 WORKDIR /openclaw
 
 # OpenClaw version control:
-# - Set OPENCLAW_VERSION Railway variable to use a specific tag (e.g., v2026.2.15)
-# - If not set, defaults to main branch (original behavior)
+# - Set OPENCLAW_VERSION Railway variable to pin a specific tag/branch (e.g., v2026.2.15)
+# - If not set, auto-detects the latest stable release via 3-tier cascade:
+#     1. GitHub Releases API (/releases/latest) — excludes pre-releases and drafts
+#     2. git ls-remote --sort=-v:refname — latest stable tag by version sort
+#     3. main branch (final fallback, with warning — may be unstable)
 # - Can also override locally with --build-arg OPENCLAW_VERSION=<tag>
 ARG OPENCLAW_VERSION
 RUN set -eu; \
   if [ -n "${OPENCLAW_VERSION:-}" ]; then \
     REF="${OPENCLAW_VERSION}"; \
-    echo "✓ Using OpenClaw ${REF}"; \
+    echo "✓ Using pinned OpenClaw ${REF}"; \
   else \
-    REF="main"; \
-    echo "⚠ OPENCLAW_VERSION not set, using main branch (may be unstable)"; \
+    echo "OPENCLAW_VERSION not set — auto-detecting latest stable release..."; \
+    REF=$(curl -sf --max-time 10 \
+      "https://api.github.com/repos/openclaw/openclaw/releases/latest" \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" \
+      2>/dev/null) || REF=""; \
+    if [ -n "$REF" ]; then \
+      echo "✓ GitHub API: latest stable release is ${REF}"; \
+    else \
+      echo "⚠ GitHub API unavailable — falling back to git ls-remote tag detection"; \
+      REF=$(git ls-remote --tags --sort=-v:refname \
+        https://github.com/openclaw/openclaw.git 'v*' \
+        | grep -v '\^{}' \
+        | grep -v -- '-' \
+        | head -1 \
+        | sed 's|.*refs/tags/||') || REF=""; \
+      if [ -n "$REF" ]; then \
+        echo "✓ git ls-remote: latest stable tag is ${REF}"; \
+      else \
+        echo "⚠ Tag detection also failed — falling back to main branch (unstable)"; \
+        REF="main"; \
+      fi; \
+    fi; \
   fi; \
   git clone --depth 1 --branch "${REF}" https://github.com/openclaw/openclaw.git .
 

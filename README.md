@@ -36,7 +36,7 @@ This repo packages **OpenClaw** for Railway with a comprehensive **/setup** web 
 - **`OPENCLAW_STATE_DIR=/data/.openclaw`** - Config and credentials directory
 - **`OPENCLAW_WORKSPACE_DIR=/data/workspace`** - Agent workspace directory
 - **`OPENCLAW_GATEWAY_TOKEN`** - Stable auth token (auto-generated if not set)
-- **`OPENCLAW_VERSION=v2026.2.15`** - Pin to a stable OpenClaw release (see [Version Control](#openclaw-version-control))
+- **`OPENCLAW_VERSION`** - Pin to a specific release tag (e.g., `v2026.2.19`); omit to auto-detect latest stable
 
 ### Optional
 
@@ -54,58 +54,40 @@ This repo packages **OpenClaw** for Railway with a comprehensive **/setup** web 
 
 ## OpenClaw Version Control
 
-The template supports flexible version control to prevent breakage from unstable OpenClaw releases:
+### Default: Auto-detect Latest Stable Release
 
-### How It Works
+When `OPENCLAW_VERSION` is not set, the build **automatically detects and uses the latest stable release** via a 3-tier cascade:
 
-Set the **`OPENCLAW_VERSION`** environment variable to control which OpenClaw version to build:
+1. **GitHub Releases API** — queries `/releases/latest`, which excludes pre-releases and drafts
+2. **`git ls-remote` tag detection** — fallback if the API is unreachable; filters out pre-release tags
+3. **`main` branch** — last-resort fallback only, with a warning in build logs
 
-- **With `OPENCLAW_VERSION` set**: Uses that specific tag/branch (e.g., `v2026.2.15`)
-- **Without `OPENCLAW_VERSION`**: Uses `main` branch (may be unstable)
+This means one-click deployments always get the latest stable release with no manual configuration required.
 
-### Recommended Configuration
+### Pinning a Specific Version (Advanced)
 
-```
-OPENCLAW_VERSION=v2026.2.15
-```
-
-This pins your deployment to a known stable release, protecting you from upstream breakage.
-
-### Use Cases
-
-**Pin to Stable Release (Recommended)**
+Set `OPENCLAW_VERSION` to override auto-detection:
 
 ```
 OPENCLAW_VERSION=v2026.2.15
 ```
 
-Use when main branch is broken or to ensure consistent deployments.
+Accepted values: any release tag (e.g., `v2026.2.19`), branch name, or commit SHA.
 
-**Use Latest Main (Advanced)**
-
-```
-(Leave OPENCLAW_VERSION unset)
-```
-
-Automatically uses latest main branch. Good for testing but may break unexpectedly.
-
-**Test Specific Branch**
-
-```
-OPENCLAW_VERSION=feature-branch-name
-```
-
-Useful for testing unreleased features.
+**Use cases:**
+- Lock to a known-good version when the latest release has a regression
+- Test a specific branch or pre-release tag
+- Ensure reproducible builds across redeploys
 
 ### Finding Available Versions
-
-List all OpenClaw releases:
 
 ```bash
 git ls-remote --tags https://github.com/openclaw/openclaw.git | grep -v '\^{}' | sed 's|.*refs/tags/||'
 ```
 
-See **[OPENCLAW-VERSION-CONTROL.md](OPENCLAW-VERSION-CONTROL.md)** for detailed documentation.
+Or browse [github.com/openclaw/openclaw/releases](https://github.com/openclaw/openclaw/releases).
+
+See **[docs/OPENCLAW-VERSION-CONTROL.md](docs/OPENCLAW-VERSION-CONTROL.md)** for full details.
 
 ## New Features in This Fork
 
@@ -188,9 +170,9 @@ Add OpenAI-compatible providers during setup:
 
 **Recommended:**
 
-- `OPENCLAW_VERSION=v2026.2.15` — Pin to stable release
 - `OPENCLAW_STATE_DIR=/data/.openclaw`
 - `OPENCLAW_WORKSPACE_DIR=/data/workspace`
+- `OPENCLAW_VERSION=v2026.2.19` — Optional: pin to a specific release (omit to auto-detect latest stable)
 
 1. Railway will automatically:
    - Create a volume at `/data`
@@ -283,10 +265,9 @@ Then:
 
 ### Build fails on Railway
 
-1. Check if OpenClaw main branch is broken
-2. Set `OPENCLAW_VERSION=v2026.2.15` to pin to stable release
-3. Check Railway build logs for specific errors
-4. Verify all required files are in the repository
+1. Check Railway build logs — the auto-detection tier used is logged clearly
+2. If the latest stable release has a build issue, pin a known-good version: `OPENCLAW_VERSION=v2026.2.15`
+3. Verify all required files are in the repository
 
 ### Import backup fails
 
@@ -321,7 +302,6 @@ docker run --rm -p 8080:8080 \
   -e SETUP_PASSWORD=test \
   -e OPENCLAW_STATE_DIR=/data/.openclaw \
   -e OPENCLAW_WORKSPACE_DIR=/data/workspace \
-  -e OPENCLAW_VERSION=v2026.2.15 \
   -v $(pwd)/.tmpdata:/data \
   openclaw-railway-template
 
@@ -348,17 +328,20 @@ node src/server.js
 ### Override OpenClaw version locally
 
 ```bash
-docker build --build-arg OPENCLAW_VERSION=v2026.2.16 -t openclaw-test .
+# Pin to a specific release
+docker build --build-arg OPENCLAW_VERSION=v2026.2.19 -t openclaw-test .
+
+# Omit to auto-detect latest stable release
+docker build -t openclaw-test .
 ```
 
 ## Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Developer documentation and architecture notes
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines and development setup
-- **[MIGRATION.md](MIGRATION.md)** - Migration guide from older versions
-- **[OPENCLAW-VERSION-CONTROL.md](OPENCLAW-VERSION-CONTROL.md)** - Version control feature details
-- **[DAY7-TEST-REPORT.md](DAY7-TEST-REPORT.md)** - Comprehensive test results
-- **[QA-SANITY-CHECK-REPORT.md](QA-SANITY-CHECK-REPORT.md)** - Local validation results
+- **[docs/OPENCLAW-VERSION-CONTROL.md](docs/OPENCLAW-VERSION-CONTROL.md)** - Version control and auto-detection details
+- **[docs/MIGRATION_FROM_MOLTBOT.md](docs/MIGRATION_FROM_MOLTBOT.md)** - Migration guide from older versions
+- **[docs/STARTUP-IMPROVEMENTS.md](docs/STARTUP-IMPROVEMENTS.md)** - Gateway startup and reliability notes
 
 ## Support & Community
 
