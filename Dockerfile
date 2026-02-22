@@ -64,10 +64,18 @@ RUN apt-get update \
 
 # Install act (GitHub Actions local runner)
 # Downloads prebuilt binary from GitHub releases
-# Note: Use latest stable version (v0.2.84+)
+# Maps dpkg architecture names to act release names
 RUN set -e && \
   ARCH=$(dpkg --print-architecture) && \
-  curl -fsSL -L https://github.com/nektos/act/releases/download/v0.2.84/act_Linux_${ARCH}.tar.gz \
+  case "$ARCH" in \
+    amd64) ACT_ARCH="x86_64" ;; \
+    arm64) ACT_ARCH="arm64" ;; \
+    armhf) ACT_ARCH="armv7" ;; \
+    armel) ACT_ARCH="armv6" ;; \
+    i386) ACT_ARCH="i386" ;; \
+    *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
+  esac && \
+  curl -fsSL -L https://github.com/nektos/act/releases/download/v0.2.84/act_Linux_${ACT_ARCH}.tar.gz \
   -o /tmp/act.tar.gz && \
   tar -xzf /tmp/act.tar.gz -C /usr/local/bin && \
   chmod +x /usr/local/bin/act && \
