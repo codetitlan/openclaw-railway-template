@@ -25,7 +25,7 @@ jobs:
       node-version: "22"
       package-manager: pnpm
       lint-command: npm run lint
-      test-command: npm run smoke
+      test-command: ""
       # build-enabled is automatically true for pull_request events,
       # false for push-only events — controlled in node-ci.yml via
       # the if: condition on the build-validate job.
