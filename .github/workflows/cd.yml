@@ -30,7 +30,9 @@ on:
   push:
     branches: [main]
 
-# Note: permissions are set inside the reusable workflows (cannot set at workflow level when only calling reusable workflows)
+permissions:
+  contents: read
+  packages: write    # required for pushing to ghcr.io
 
 jobs:
   pipeline:

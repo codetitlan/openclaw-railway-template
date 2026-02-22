@@ -20,7 +20,7 @@ on:
 
 jobs:
   ci:
-    uses: bb-claw/ci-workflows/.github/workflows/node-ci.yml@v2
+    uses: bb-claw/ci-workflows/.github/workflows/node-ci.yml@main
     with:
       node-version: "22"
       package-manager: pnpm
