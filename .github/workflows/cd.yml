@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   pipeline:
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v1
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v2
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
