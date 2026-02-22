@@ -37,8 +37,8 @@ permissions:
 
 jobs:
   pipeline:
-    # Using @v5.4 - explicit secrets mapping + PIPELINE_DEBUG diagnostics
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v5.4
+    # Using @v5.5 - explicit secrets mapping + PIPELINE_DEBUG diagnostics (cache-bypass)
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v5.5
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
