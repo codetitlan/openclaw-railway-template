@@ -36,8 +36,8 @@ permissions:
 
 jobs:
   pipeline:
-    # Using @v3 (fixed) - now properly references deploy-railway.yml@main for project-id support
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v3
+    # Using @v4 - now includes environment-id support for Railway deployments
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v4
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
@@ -45,6 +45,8 @@ jobs:
       railway-service-id-prod:  ${{ vars.RAILWAY_SERVICE_ID_PROD }}
       railway-project-id-dev:   ${{ vars.RAILWAY_PROJECT_ID_DEV }}
       railway-project-id-prod:  ${{ vars.RAILWAY_PROJECT_ID_PROD }}
+      railway-environment-id-dev:   ${{ vars.RAILWAY_ENVIRONMENT_ID_DEV }}
+      railway-environment-id-prod:  ${{ vars.RAILWAY_ENVIRONMENT_ID_PROD }}
       package-manager:           pnpm
       # ── Optional overrides (uncomment to customise) ──────────────────────
       # dockerfile:              "./Dockerfile"
