@@ -1,67 +1,60 @@
-# Deploy Failure Investigation - 2026-02-22
+# Deploy Failure - Root Cause Found & Fixed
 
 ## Failed Run
-- URL: https://github.com/bb-claw/openclaw-railway-template/actions/runs/22275704046/job/64437360288
-- Job: pipeline / deploy-dev / Deploy → Railway (dev)
-- Status: FAILED
-- Branch: feature/update-to-ciworkflows-v51
+- URL: https://github.com/bb-claw/openclaw-railway-template/actions/runs/22275704046/job/64437912177
+- Error: `error: unexpected argument '--project' found`
+- Usage: `railway redeploy --service <SERVICE> --yes`
 
-## What We Know
-- ✅ Validate Configuration: SUCCESS
-- ✅ Build & Push to ghcr.io: SUCCESS
-- ✅ Unit Tests: SUCCESS
-- ❌ Deploy → Railway (dev): FAILED
-- ⏭️ Smoke Test: SKIPPED (due to deploy failure)
+## Root Cause
 
-## Possible Causes to Investigate
+**The `railway redeploy` command does NOT accept `--project` or `--environment` flags!**
 
-1. **Railway CLI Global Flags Issue**
-   - Command: `railway redeploy --service ID --project PID --environment EID --yes`
-   - May need different syntax or flags
-   - Railway docs: https://docs.railway.com/cli/global-options
+```
+❌ WRONG:
+railway redeploy --service ID --project PID --environment EID --yes
+error: unexpected argument '--project' found
 
-2. **Token/Authentication Issue**
-   - RAILWAY_TOKEN_DEV might not be accessible
-   - Token might lack required scopes
-   - Token might be expired
+✅ CORRECT:
+railway redeploy --service ID --yes
+```
 
-3. **Service/Project/Environment ID Issue**
-   - SERVICE_ID might be invalid
-   - PROJECT_ID might be invalid
-   - ENVIRONMENT_ID might be invalid or in wrong format
+The global flags `--project` and `--environment` work with OTHER Railway CLI commands, but NOT with `redeploy`.
 
-4. **GitHub Variables Issue**
-   - Variables might have trailing spaces (again)
-   - Variables might be undefined
-   - Variables might not be accessible in the workflow
+## Solution
 
-5. **Railway API/CLI Issue**
-   - Railway service might be down
-   - CLI command syntax might have changed
-   - API might require different parameters
+The `redeploy` command only accepts:
+- `--service <SERVICE>` - Target service (required)
+- `--yes` - Skip confirmation (optional)
 
-## How to Proceed
+Project/environment context is determined by:
+1. **RAILWAY_TOKEN scope** - Token is already scoped to project + environment
+2. **Linked service** - Railway CLI remembers the current service context
 
-1. **Check the exact error** in the GitHub Actions log
-2. **Verify GitHub Variables** in Settings → Variables
-   - RAILWAY_SERVICE_ID_DEV
-   - RAILWAY_PROJECT_ID_DEV
-   - RAILWAY_ENVIRONMENT_ID_DEV
-   - Check for trailing spaces!
-3. **Verify GitHub Secrets** in Settings → Environments → dev → Secrets
-   - RAILWAY_TOKEN_DEV
-4. **Test Railway CLI command locally** if possible
-5. **Check Railway API status** at https://status.railway.app/
+## Fix Applied
 
-## Next Steps
+In `deploy-railway.yml`:
+- ✅ Removed `--project` flag (not supported)
+- ✅ Removed `--environment` flag (not supported)
+- ✅ Use only: `railway redeploy --service SERVICE_ID --yes`
+- ✅ Project/environment IDs still logged for debugging (but not used in command)
+- ✅ Token scope handles the context automatically
 
-Once the error is identified:
-1. Determine root cause
-2. Fix in this branch (feature/investigate-deploy-failure)
-3. Create PR with fix
-4. Test with pipeline run
-5. Merge when working
+## New Flow
+
+```bash
+# Set up - Railway CLI initialization with token
+export RAILWAY_TOKEN="..."
+
+# Debug output - show what IDs we have
+echo "📍 Project ID: ..."
+echo "📍 Environment ID: ..."
+
+# Execute - only what redeploy actually supports
+railway redeploy --service "fb931a8f-..." --yes
+```
 
 ## Status
 
-⏳ **WAITING**: Need to see the actual error message from the GitHub Actions log to proceed.
+✅ **FIXED**: Updated deploy-railway.yml in ci-workflows
+✅ **Ready**: Feature branch prepared with fix
+🔄 **Next**: Create PR in ci-workflows, merge, tag v5.2, update openclaw-railway-template
