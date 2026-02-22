@@ -64,14 +64,15 @@ RUN apt-get update \
 
 # Install act (GitHub Actions local runner)
 # Downloads prebuilt binary from GitHub releases
+# Note: Use latest stable version (v0.2.84+)
 RUN set -e && \
   ARCH=$(dpkg --print-architecture) && \
-  curl -fsSL -L https://github.com/nektos/act/releases/download/v0.2.66/act_Linux_${ARCH}.tar.gz \
+  curl -fsSL -L https://github.com/nektos/act/releases/download/v0.2.84/act_Linux_${ARCH}.tar.gz \
   -o /tmp/act.tar.gz && \
-  tar -xz -C /usr/local/bin -f /tmp/act.tar.gz && \
+  tar -xzf /tmp/act.tar.gz -C /usr/local/bin && \
   chmod +x /usr/local/bin/act && \
   rm /tmp/act.tar.gz && \
-  ls -la /usr/local/bin/act
+  act --version
 
 # Install Himalaya (download prebuilt binary from GitHub releases)
 RUN curl -fsSL https://github.com/pimalaya/himalaya/releases/download/v1.1.0/himalaya.x86_64-linux.tgz \
