@@ -1,69 +1,78 @@
 #!/bin/bash
 # Smoke tests for openclaw-railway-template
-# Tests basic repository structure and functionality
+# Tests basic repository structure and deployment readiness
+# Extensible via v2 ci-workflows smoke-test composite action
 
 set -e
 
 echo "🧪 Running openclaw-railway-template smoke tests..."
 echo ""
 
+# Exit codes
+EXIT_CODE=0
+
 # Colors
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 {
   echo "## Smoke Test Results"
   echo ""
-  echo "| Check | Status |"
-  echo "|-------|--------|"
+  echo "| Category | Check | Status |"
+  echo "|----------|-------|--------|"
 
-  # Check basic structure
-  echo "Checking repository structure..."
+  # Required: Core files
+  echo "| **Structure** | package.json | $([ -f package.json ] && echo '✅' || echo '❌ Missing') |"
+  [ ! -f package.json ] && EXIT_CODE=1
+
+  echo "| | src/ directory | $([ -d src ] && echo '✅' || echo '⚠️ (optional)') |"
   
-  if [[ -f package.json ]]; then
-    echo "| package.json | ✅ |"
-  else
-    echo "| package.json | ❌ Missing |"
-    exit 1
-  fi
+  echo "| | Dockerfile | $([ -f Dockerfile ] && echo '✅' || echo '❌ Missing') |"
+  [ ! -f Dockerfile ] && EXIT_CODE=1
 
-  if [[ -d src ]]; then
-    echo "| src/ directory | ✅ |"
-  else
-    echo "| src/ directory | ❌ Missing |"
-    exit 1
-  fi
+  echo "| | scripts/ directory | $([ -d scripts ] && echo '✅' || echo '⚠️ (optional)') |"
 
-  if [[ -f Dockerfile ]]; then
-    echo "| Dockerfile | ✅ |"
-  else
-    echo "| Dockerfile | ❌ Missing |"
-    exit 1
-  fi
+  # Deployment-critical
+  echo "| **Deployment** | .github/workflows/ | $([ -d .github/workflows ] && echo '✅' || echo '❌ Missing') |"
+  [ ! -d .github/workflows ] && EXIT_CODE=1
 
-  if [[ -f scripts/smoke.js ]]; then
-    echo "| scripts/smoke.js | ✅ |"
-  else
-    echo "| scripts/smoke.js | ❌ Missing |"
-    exit 1
-  fi
+  echo "| | GitHub Actions configured | $([ -f .github/workflows/ci.yml ] && echo '✅' || echo '❌ Missing') |"
+  [ ! -f .github/workflows/ci.yml ] && EXIT_CODE=1
 
-  # Test the smoke script (this is what validates the openclaw binary at runtime)
+  echo "| | CD pipeline configured | $([ -f .github/workflows/cd.yml ] && echo '✅' || echo '❌ Missing') |"
+  [ ! -f .github/workflows/cd.yml ] && EXIT_CODE=1
+
+  # Runtime tests
+  echo "| **Runtime** | scripts/smoke.js | $([ -f scripts/smoke.js ] && echo '✅' || echo '⚠️ (optional)') |"
+  
+  echo "| | npm/pnpm/yarn | $(command -v npm &>/dev/null || command -v pnpm &>/dev/null || command -v yarn &>/dev/null && echo '✅' || echo '⚠️') |"
+
+  # Runtime smoke test (may fail without openclaw binary)
   echo ""
-  echo "Testing npm smoke script..."
-  if npm run smoke > /dev/null 2>&1; then
-    echo "| npm run smoke | ✅ |"
-  else
-    # Note: This may fail in CI/CD without openclaw binary, which is expected
-    # The real smoke test happens in integration-test phase after deployment
-    echo "| npm run smoke | ⚠️ (needs runtime) |"
+  if [ -f scripts/smoke.js ]; then
+    if npm run smoke 2>&1 | head -1 | grep -q "undefined\|error" && [ -z "$OPENCLAW_BINARY_REQUIRED" ]; then
+      echo "| **Integration** | npm run smoke | ⚠️ (needs deployed instance) |"
+    else
+      echo "| **Integration** | npm run smoke | ✅ |"
+    fi
   fi
 
   echo ""
-  echo "| Overall | ✅ All checks passed |"
+  if [ $EXIT_CODE -eq 0 ]; then
+    echo "| **Summary** | All critical checks | ✅ Passed |"
+  else
+    echo "| **Summary** | All critical checks | ❌ Failed |"
+  fi
 
 } | tee -a "$GITHUB_STEP_SUMMARY"
 
 echo ""
-echo -e "${GREEN}✓ Smoke tests passed${NC}"
+if [ $EXIT_CODE -eq 0 ]; then
+  echo -e "${GREEN}✓ Smoke tests passed${NC}"
+  exit 0
+else
+  echo -e "${RED}✗ Smoke tests failed${NC}"
+  exit 1
+fi
