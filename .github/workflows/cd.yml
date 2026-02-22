@@ -30,6 +30,7 @@ on:
   push:
     branches: [main]
 
+# Force GitHub to refresh workflow cache
 permissions:
   contents: read
   packages: write    # required for pushing to ghcr.io
