@@ -128,11 +128,20 @@ async function runCmd(cmd, args = []) {
 }
 
 /**
- * Run integration checks (Himalaya, Telegram, Claude API, GitHub, Brave)
+ * Run integration checks (Openclaw gateway, Himalaya, Telegram, Claude API, GitHub, Brave)
  */
 async function runIntegrationChecks() {
   const results = {};
   let allOk = true;
+
+  // Openclaw gateway (required)
+  const gateway = await testGatewayHealth();
+  if (gateway.status === 'healthy') {
+    results.openclaw_gateway = { ok: true, detail: `${gateway.latency_ms}ms (HTTP ${gateway.status_code})` };
+  } else {
+    results.openclaw_gateway = { ok: false, detail: gateway.error || gateway.status };
+    allOk = false;
+  }
 
   // Himalaya (required)
   const himalaya = await runCmd('which', ['himalaya']);
