@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/ci.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/ci.yml)
 [![CD](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/cd.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/cd.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This repo packages **Openclaw** for Railway with a small **/setup** web wizard so users can deploy and onboard **without running any commands**.
 
