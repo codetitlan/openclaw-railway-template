@@ -36,8 +36,9 @@ permissions:
 
 jobs:
   pipeline:
-    # Using @v3 which includes Railway debugging and optional project-id support
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v3
+    # Using commit SHA instead of v3 tag to bypass reference resolution issues
+    # SHA: 08b9bb1 = v3 (includes Railway debugging and project-id support)
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@08b9bb1ed9e061ac5cbfa801abb53273ca4ec98f
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
