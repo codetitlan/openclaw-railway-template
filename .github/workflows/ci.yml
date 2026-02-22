@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .github/workflows/ci.yml  — copy this into every service repo
+#
+# Triggers:
+#   - Every push to feature branches     → lint + unit tests (fast, ~2 min)
+#   - Every PR opened/updated to main    → lint + unit + build validation
+#
+# Customise:
+#   - Change node-ci.yml to python-ci.yml for Python services
+#   - Override lint-command / test-command if you use non-standard scripts
+#   - Adjust node-version as needed
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches-ignore: [main]      # runs on every feature branch push
+  pull_request:
+    branches: [main]             # runs (with build validation) on PRs to main
+
+jobs:
+  ci:
+    uses: bb-claw/ci-workflows/.github/workflows/node-ci.yml@v2
+    with:
+      node-version: "22"
+      package-manager: pnpm
+      lint-command: npm run lint
+      test-command: "bash scripts/smoke.sh"
+      # build-enabled is automatically true for pull_request events,
+      # false for push-only events — controlled in node-ci.yml via
+      # the if: condition on the build-validate job.
+      build-enabled: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit

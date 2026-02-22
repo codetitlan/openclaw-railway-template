@@ -1,11 +1,7 @@
 # Openclaw Railway Template (1‑click deploy)
 
-[![Docker build](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build.yml)
-[![Docker build (Feature Branches)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/docker-build-feature.yml)
-[![Feature branch CI](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/feature-branch-ci.yml)
-[![Health Check & Buddy Deployment](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/health-check-and-buddy.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/health-check-and-buddy.yml)
-[![Deploy Buddy Instance](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/deploy-buddy.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/deploy-buddy.yml)
-[![Integration Tests](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/integration-tests.yml)
+[![CI](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/ci.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/ci.yml)
+[![CD](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/cd.yml/badge.svg)](https://github.com/bb-claw/openclaw-railway-template/actions/workflows/cd.yml)
 
 This repo packages **Openclaw** for Railway with a small **/setup** web wizard so users can deploy and onboard **without running any commands**.
 
@@ -74,63 +70,36 @@ Then:
 4. Copy the **Bot Token** and paste it into `/setup`
 5. Invite the bot to your server (OAuth2 URL Generator → scopes: `bot`, `applications.commands`; then choose permissions)
 
-## Deployment & Health Checks
+## Deployment Pipeline
 
-After pushing to `main`, the following workflows run automatically in sequence:
+Workflows are defined in `.github/workflows/` and delegate to [bb-claw/ci-workflows](https://github.com/bb-claw/ci-workflows).
 
-### Workflow Pipeline
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | Push to any non-main branch, PRs to main | Lint + smoke test; Docker build validation on PRs |
+| `cd.yml` | Push to `main` | Full pipeline: build → test → deploy dev → deploy prod |
+
+### CD Pipeline (push to main)
 
 ```
 Push to main
     ↓
-[Docker build] - Build & push to GHCR
+Validate configuration (vars + secrets + Dockerfile)
     ↓
-[Redeploy on Railway] - Update primary instance
+Build Docker image → push to GHCR
     ↓
-[Health Check & Buddy Deployment] - triggered via workflow_run
-    ├─ [health-check] - Verify /setup/healthz responds
-    │   └─ Wait 60s → Poll endpoint (max 10 min)
-    └─ [trigger-buddy] - Trigger buddy deployment on success
-        └─ [deploy-buddy.yml] - Run buddy for 2 hours
+Smoke test (npm run smoke)
+    ↓
+Deploy to dev → smoke test → integration tests
+    ↓
+Deploy to prod → smoke test (auto-rollback on failure)
 ```
 
-### Workflow Files
+### Manual buddy redeploy
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `docker-build.yml` | Push to any branch | Build Docker image, redeploy to Railway |
-| `health-check-and-buddy.yml` | Docker build completes on main | Health verification & buddy deployment |
-| `deploy-buddy.yml` | Manual or triggered by health-check | Run buddy instance for configured duration |
+Go to **Actions → Deploy Buddy Instance → Run workflow** to redeploy the prod instance on demand without triggering the full pipeline.
 
-### Health Check Details
-
-- **Endpoint**: `{RAILWAY_PRIMARY_URL}/setup/healthz`
-- **Initial wait**: 60 seconds after primary redeploy
-- **Poll interval**: 10 seconds
-- **Max attempts**: 60 (10 minutes total timeout)
-- **Trigger**: After docker-build.yml succeeds on main
-
-### Buddy Instance Details
-
-- **Triggered by**: Successful health check
-- **Duration**: 2 hours (configurable via workflow dispatch)
-- **Cost**: ~$0.50-1/day vs $7-8/day for always-on
-- **Workflow**: `.github/workflows/deploy-buddy.yml`
-- **Manual trigger**: Available in GitHub Actions UI
-
-### Troubleshooting
-
-If health checks fail:
-1. Verify `RAILWAY_PRIMARY_URL` secret is set correctly
-2. Check primary instance is accessible
-3. Ensure `/setup/healthz` endpoint responds with 200 status
-
-If buddy deployment doesn't trigger:
-1. Verify `RAILWAY_BUDDY_SERVICE_ID` and `RAILWAY_BUDDY_ENVIRONMENT_ID` are set
-2. Check health-check job passed successfully
-3. Verify GitHub token has workflows permission
-
-See `.github/workflows/` for implementation details.
+See `.github/workflows/README.md` for required variables and secrets.
 
 ## Cost Optimization (Future-Ready)
 
@@ -188,20 +157,27 @@ See `openclaw-optimized.json` in this repo for full reference configuration.
 - **Anthropic Prompt Caching:** https://docs.anthropic.com/en/docs/build-a-bot/caching
 - **OpenClaw Releases:** https://github.com/openclaw/openclaw/releases
 
-## GitHub Secrets Setup
+## GitHub Variables & Secrets Setup
 
-To enable the full deployment pipeline (health checks + buddy instance), configure these secrets in the repository settings:
+Configure these in repository Settings before the pipeline can deploy.
 
-| Secret | Description | Example |
-|--------|-------------|---------|
-| `RAILWAY_API_TOKEN` | Railway API token for service management | `eyJ...` |
-| `RAILWAY_SERVICE_ID` | Primary service ID on Railway | `svc_xxxxx` |
-| `RAILWAY_ENVIRONMENT_ID` | Railway environment ID | `env_xxxxx` |
-| `RAILWAY_PRIMARY_URL` | Primary instance public URL | `https://openclaw-primary.up.railway.app` |
-| `RAILWAY_BUDDY_SERVICE_ID` | Buddy service ID on Railway | `svc_yyyyy` |
-| `RAILWAY_BUDDY_ENVIRONMENT_ID` | Buddy environment ID | `env_yyyyy` |
+**Variables** (Settings → Variables → Repository):
 
-Without these secrets, workflows will be skipped. See Railway dashboard for IDs.
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DEV_URL` | Primary instance public URL | `https://openclaw-dev.up.railway.app` |
+| `PROD_URL` | Buddy/prod instance public URL | `https://openclaw-prod.up.railway.app` |
+| `RAILWAY_SERVICE_ID_DEV` | Primary Railway service ID | `svc_xxxxx` |
+| `RAILWAY_SERVICE_ID_PROD` | Buddy Railway service ID | `svc_yyyyy` |
+
+**Secrets** (Settings → Secrets → Repository):
+
+| Secret | Description |
+|--------|-------------|
+| `RAILWAY_TOKEN_DEV` | Railway API token for primary instance |
+| `RAILWAY_TOKEN_PROD` | Railway API token for buddy instance |
+
+Service and environment IDs are found in the Railway dashboard URL when viewing a service.
 
 ## Local smoke test
 

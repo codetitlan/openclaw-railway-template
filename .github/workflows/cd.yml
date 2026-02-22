@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .github/workflows/cd.yml  — copy this into every service repo
+#
+# Triggers: every push to main (= every merged PR)
+#
+# Required GitHub environment variables (Settings → Environments):
+#   dev environment:
+#     DEV_URL                  https://your-service-dev.up.railway.app
+#     RAILWAY_SERVICE_ID_DEV   Railway service ID for dev
+#   production environment:
+#     PROD_URL                 https://your-service.up.railway.app
+#     RAILWAY_SERVICE_ID_PROD  Railway service ID for production
+#
+# Required GitHub secrets (Settings → Environments):
+#   dev environment:        RAILWAY_TOKEN_DEV
+#   production environment: RAILWAY_TOKEN_PROD
+#
+# Optional secrets (added to any environment if you use them):
+#   SLACK_WEBHOOK_URL        Enables Slack deployment notifications
+#
+# Customise:
+#   - Override integration-test-command if not using npm run test:integration
+#   - Override unit-test-command if not using npm test
+#   - Override health-check-path if not using /health
+#   - Override node-version as needed
+# ─────────────────────────────────────────────────────────────────────────────
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write    # required for pushing to ghcr.io
+
+jobs:
+  pipeline:
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v2
+    with:
+      dev-url:                  ${{ vars.DEV_URL }}
+      prod-url:                 ${{ vars.PROD_URL }}
+      railway-service-id-dev:   ${{ vars.RAILWAY_SERVICE_ID_DEV }}
+      railway-service-id-prod:  ${{ vars.RAILWAY_SERVICE_ID_PROD }}
+      package-manager:           pnpm
+      # ── Optional overrides (uncomment to customise) ──────────────────────
+      # dockerfile:              "./Dockerfile"
+      health-check-path:         "/health"
+      unit-test-command:         "npm run lint"
+      integration-test-command:  "bash scripts/integration-tests.sh"
+      # node-version:            "22"
+    secrets: inherit
