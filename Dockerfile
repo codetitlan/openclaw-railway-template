@@ -66,9 +66,10 @@ RUN apt-get update \
 # Downloads prebuilt binary from GitHub releases
 RUN set -e && \
   ARCH=$(dpkg --print-architecture) && \
-  curl -fsSL https://github.com/nektos/act/releases/download/v0.2.66/act_Linux_${ARCH}.tar.gz \
+  curl -fsSL -L https://github.com/nektos/act/releases/download/v0.2.66/act_Linux_${ARCH}.tar.gz \
   | tar -xz -C /usr/local/bin && \
-  chmod +x /usr/local/bin/act
+  chmod +x /usr/local/bin/act && \
+  act --version
 
 # Install Himalaya (download prebuilt binary from GitHub releases)
 RUN curl -fsSL https://github.com/pimalaya/himalaya/releases/download/v1.1.0/himalaya.x86_64-linux.tgz \
