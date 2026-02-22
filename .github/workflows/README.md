@@ -51,3 +51,4 @@ Set these in GitHub repo settings (Settings → Secrets):
 - `GITHUB_TOKEN` — Automatically available (used for GHCR auth)
 Test run to trigger CD pipeline
 # Updated Railway tokens
+Manual trigger for v3 test
