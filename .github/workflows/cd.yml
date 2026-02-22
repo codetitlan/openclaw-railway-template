@@ -36,7 +36,9 @@ permissions:
 
 jobs:
   pipeline:
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v2
+    # Using debug commit from feature/debug-railway-deploy for troubleshooting
+    # Will switch back to @v2 once the issue is identified and fixed
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@f602dd3
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
