@@ -54,4 +54,6 @@ jobs:
       unit-test-command:         "npm run lint"
       integration-test-command:  "bash scripts/integration-tests.sh"
       # node-version:            "22"
-    secrets: inherit
+    secrets:
+      RAILWAY_TOKEN_DEV: ${{ secrets.RAILWAY_TOKEN_DEV }}
+      RAILWAY_TOKEN_PROD: ${{ secrets.RAILWAY_TOKEN_PROD }}
