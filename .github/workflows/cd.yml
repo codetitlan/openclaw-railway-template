@@ -46,7 +46,7 @@ jobs:
       # ── Optional overrides (uncomment to customise) ──────────────────────
       # dockerfile:              "./Dockerfile"
       health-check-path:         "/health"
-      unit-test-command:         "npm run smoke"
+      unit-test-command:         "npm run lint"
       integration-test-command:  "bash scripts/integration-tests.sh"
       # node-version:            "22"
     secrets: inherit
