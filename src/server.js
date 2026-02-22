@@ -1,6 +1,7 @@
 import childProcess from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 
@@ -120,7 +121,6 @@ async function waitForGatewayReady(opts = {}) {
   // Fast TCP socket check (faster than HTTP)
   return new Promise((resolve) => {
     const check = () => {
-      const net = require("net");
       const socket = net.createConnection(INTERNAL_GATEWAY_PORT, INTERNAL_GATEWAY_HOST);
       
       socket.on("connect", () => {
