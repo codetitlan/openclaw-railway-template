@@ -7,17 +7,31 @@ All heavy lifting is delegated to [bb-claw/ci-workflows](https://github.com/bb-c
 
 **`ci.yml`** — Continuous integration (all non-main branches + PRs to main)
 
-Calls `node-ci.yml@main` from ci-workflows. Runs lint and smoke tests on every
-branch push. Also runs Docker build validation on pull requests to main.
+Calls `node-ci.yml@v2` from ci-workflows. Runs lint and custom smoke tests 
+(via `scripts/smoke.sh`) on every branch push. Also runs Docker build validation 
+on pull requests to main.
 
 **`cd.yml`** — Continuous deployment (push to `main` only)
 
-Calls `full-pipeline.yml@main` from ci-workflows. Orchestrates:
+Calls `full-pipeline.yml@v2` from ci-workflows. Orchestrates:
 0. Validate pipeline configuration
 1. Build Docker image and push to GHCR
-2. Run smoke tests inside container
+2. Run unit tests (lint) inside container
 3. Deploy to dev, run smoke + integration tests
-4. Deploy to prod, run smoke tests with auto-rollback
+4. Manual approval before production
+5. Deploy to prod, run smoke tests with auto-rollback
+
+## Custom Smoke Tests
+
+Feature branch CI runs `scripts/smoke.sh` to validate repository structure and 
+basic functionality. This script:
+- Checks for required files (package.json, Dockerfile, src/, scripts/)
+- Runs `npm run smoke` if available (gracefully skips without binary)
+- Generates summary for GitHub Actions
+
+**To customize:**
+Edit `scripts/smoke.sh` with your repository-specific smoke tests. The shared 
+workflow's smoke-test composite action will automatically detect and run it.
 
 ## Variables Required
 
