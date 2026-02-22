@@ -49,3 +49,4 @@ Set these in GitHub repo settings (Settings → Secrets):
 - `RAILWAY_TOKEN_DEV` — Railway API token for primary instance
 - `RAILWAY_TOKEN_PROD` — Railway API token for buddy instance
 - `GITHUB_TOKEN` — Automatically available (used for GHCR auth)
+Test run to trigger CD pipeline
