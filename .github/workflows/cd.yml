@@ -52,7 +52,7 @@ jobs:
       # dockerfile:              "./Dockerfile"
       health-check-path:         "/health"
       unit-test-command:         "npm run lint"
-      integration-test-command:  'curl -sf "${API_BASE_URL}/integration-test"'
+      integration-test-command:  'curl -s --fail-with-body "${API_BASE_URL}/integration-test"'
       # node-version:            "22"
     secrets:
       RAILWAY_TOKEN_DEV:  ${{ secrets.RAILWAY_TOKEN_DEV }}

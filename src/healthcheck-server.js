@@ -8,6 +8,10 @@
 import http from 'http';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -112,6 +116,123 @@ async function buildHealthResponse() {
 }
 
 /**
+ * Run a command and return exit code + output
+ */
+async function runCmd(cmd, args = []) {
+  try {
+    const { stdout } = await execFileAsync(cmd, args, { timeout: 5000 });
+    return { code: 0, output: stdout };
+  } catch (err) {
+    return { code: err.code ?? 1, output: err.stderr || err.message };
+  }
+}
+
+/**
+ * Run integration checks (Himalaya, Telegram, Claude API, GitHub, Brave)
+ */
+async function runIntegrationChecks() {
+  const results = {};
+  let allOk = true;
+
+  // Himalaya (required)
+  const himalaya = await runCmd('which', ['himalaya']);
+  if (himalaya.code === 0) {
+    const ver = await runCmd('himalaya', ['--version']);
+    results.himalaya = { ok: true, detail: ver.output.trim() };
+  } else {
+    results.himalaya = { ok: false, detail: 'not found in PATH' };
+    allOk = false;
+  }
+
+  // Telegram (optional)
+  const telegramToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!telegramToken) {
+    results.telegram = { ok: true, detail: 'not configured (optional)' };
+  } else {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${telegramToken}/getMe`);
+      const data = await r.json();
+      if (data.ok) {
+        results.telegram = { ok: true, detail: `@${data.result.username}` };
+      } else {
+        results.telegram = { ok: false, detail: data.description || 'invalid token' };
+        allOk = false;
+      }
+    } catch (err) {
+      results.telegram = { ok: false, detail: err.message };
+      allOk = false;
+    }
+  }
+
+  // Claude API (required)
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!anthropicKey) {
+    results.claude_api = { ok: false, detail: 'ANTHROPIC_API_KEY not set' };
+    allOk = false;
+  } else {
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/models', {
+        headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      });
+      if (r.ok) {
+        results.claude_api = { ok: true, detail: `HTTP ${r.status}` };
+      } else {
+        results.claude_api = { ok: false, detail: `HTTP ${r.status}` };
+        allOk = false;
+      }
+    } catch (err) {
+      results.claude_api = { ok: false, detail: err.message };
+      allOk = false;
+    }
+  }
+
+  // GitHub (optional)
+  const githubPat = process.env.GITHUB_TOKEN?.trim();
+  if (!githubPat) {
+    results.github_api = { ok: true, detail: 'not configured (optional)' };
+  } else {
+    try {
+      const r = await fetch('https://api.github.com/user', {
+        headers: { Authorization: `Bearer ${githubPat}`, 'User-Agent': 'openclaw-integration-check' },
+      });
+      if (r.ok) {
+        const data = await r.json();
+        results.github_api = { ok: true, detail: data.login };
+      } else {
+        results.github_api = { ok: false, detail: `HTTP ${r.status}` };
+        allOk = false;
+      }
+    } catch (err) {
+      results.github_api = { ok: false, detail: err.message };
+      allOk = false;
+    }
+  }
+
+  // Brave Search API (optional)
+  const braveKey = process.env.BRAVE_API_KEY?.trim();
+  if (!braveKey) {
+    results.brave_api = { ok: true, detail: 'not configured (optional)' };
+  } else {
+    try {
+      const r = await fetch('https://api.search.brave.com/res/v1/web/search?q=test&count=1', {
+        headers: { 'Accept': 'application/json', 'X-Subscription-Token': braveKey },
+      });
+      if (r.ok) {
+        results.brave_api = { ok: true, detail: `HTTP ${r.status}` };
+      } else {
+        results.brave_api = { ok: false, detail: `HTTP ${r.status}` };
+        allOk = false;
+      }
+    } catch (err) {
+      results.brave_api = { ok: false, detail: err.message };
+      allOk = false;
+    }
+  }
+
+  return { allOk, results };
+}
+
+/**
  * Create and start health check server
  */
 function startHealthCheckServer() {
@@ -166,6 +287,14 @@ function startHealthCheckServer() {
         // Simple ping
         res.writeHead(200);
         res.end(JSON.stringify({ status: 'ok' }));
+      } else if (req.url === '/integration-test') {
+        const { allOk, results } = await runIntegrationChecks();
+        res.writeHead(allOk ? 200 : 500);
+        res.end(JSON.stringify({
+          status: allOk ? 'ok' : 'failed',
+          timestamp: new Date().toISOString(),
+          results,
+        }, null, 2));
       } else {
         res.writeHead(404);
         res.end(JSON.stringify({ error: 'Not found' }));
