@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   pipeline:
-    # Using @v5.3 - enhanced token validation and error diagnostics
+    # Using @v5.3 - explicit secrets mapping (no inherit), principle of least privilege
     uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v5.3
     with:
       dev-url:                  ${{ vars.DEV_URL }}
@@ -54,4 +54,6 @@ jobs:
       unit-test-command:         "npm run lint"
       integration-test-command:  "bash scripts/integration-tests.sh"
       # node-version:            "22"
-    secrets: inherit
+    secrets:
+      RAILWAY_TOKEN_DEV: ${{ secrets.RAILWAY_TOKEN_DEV }}
+      RAILWAY_TOKEN_PROD: ${{ secrets.RAILWAY_TOKEN_PROD }}
