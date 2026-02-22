@@ -58,7 +58,17 @@ RUN apt-get update \
     python3 \
     pkg-config \
     sudo \
+    yamllint \
+    shellcheck \
   && rm -rf /var/lib/apt/lists/*
+
+# Install act (GitHub Actions local runner)
+# Downloads prebuilt binary from GitHub releases
+RUN set -e && \
+  ARCH=$(dpkg --print-architecture) && \
+  curl -fsSL https://github.com/nektos/act/releases/download/v0.2.66/act_Linux_${ARCH}.tar.gz \
+  | tar -xz -C /usr/local/bin && \
+  chmod +x /usr/local/bin/act
 
 # Install Himalaya (download prebuilt binary from GitHub releases)
 RUN curl -fsSL https://github.com/pimalaya/himalaya/releases/download/v1.1.0/himalaya.x86_64-linux.tgz \
