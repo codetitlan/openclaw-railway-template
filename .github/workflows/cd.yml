@@ -36,8 +36,8 @@ permissions:
 
 jobs:
   pipeline:
-    # Using @v4 - now includes environment-id support for Railway deployments
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v4
+    # Using @v5 - includes railway redeploy fix (context switching) + deployment verification
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v5
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
