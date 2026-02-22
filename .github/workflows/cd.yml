@@ -36,10 +36,8 @@ permissions:
 
 jobs:
   pipeline:
-    # TEMPORARY: Reverted to v2 (stable) while v3 workflow debugging
-    # v3 has startup_failure - needs investigation on Railway project-id parameters
-    # TODO: Debug v3 full-pipeline.yml syntax/schema issues before re-enabling
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v2
+    # Using @v3 (fixed) - now properly references deploy-railway.yml@main for project-id support
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v3
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
