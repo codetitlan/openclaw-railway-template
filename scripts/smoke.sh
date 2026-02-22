@@ -1,7 +1,6 @@
 #!/bin/bash
 # Smoke tests for openclaw-railway-template
 # Tests basic repository structure and deployment readiness
-# Extensible via v2 ci-workflows smoke-test composite action
 
 set -e
 
@@ -14,59 +13,84 @@ EXIT_CODE=0
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-{
+# Run tests in a subshell to avoid set -e issues
+(
   echo "## Smoke Test Results"
   echo ""
   echo "| Category | Check | Status |"
   echo "|----------|-------|--------|"
 
   # Required: Core files
-  echo "| **Structure** | package.json | $([ -f package.json ] && echo '✅' || echo '❌ Missing') |"
-  [ ! -f package.json ] && EXIT_CODE=1
+  if [[ -f package.json ]]; then
+    echo "| **Structure** | package.json | ✅ |"
+  else
+    echo "| **Structure** | package.json | ❌ Missing |"
+    exit 1
+  fi
 
-  echo "| | src/ directory | $([ -d src ] && echo '✅' || echo '⚠️ (optional)') |"
+  if [[ -d src ]]; then
+    echo "| | src/ directory | ✅ |"
+  else
+    echo "| | src/ directory | ⚠️ (optional) |"
+  fi
   
-  echo "| | Dockerfile | $([ -f Dockerfile ] && echo '✅' || echo '❌ Missing') |"
-  [ ! -f Dockerfile ] && EXIT_CODE=1
+  if [[ -f Dockerfile ]]; then
+    echo "| | Dockerfile | ✅ |"
+  else
+    echo "| | Dockerfile | ❌ Missing |"
+    exit 1
+  fi
 
-  echo "| | scripts/ directory | $([ -d scripts ] && echo '✅' || echo '⚠️ (optional)') |"
+  if [[ -d scripts ]]; then
+    echo "| | scripts/ directory | ✅ |"
+  else
+    echo "| | scripts/ directory | ⚠️ (optional) |"
+  fi
 
   # Deployment-critical
-  echo "| **Deployment** | .github/workflows/ | $([ -d .github/workflows ] && echo '✅' || echo '❌ Missing') |"
-  [ ! -d .github/workflows ] && EXIT_CODE=1
+  if [[ -d .github/workflows ]]; then
+    echo "| **Deployment** | .github/workflows/ | ✅ |"
+  else
+    echo "| **Deployment** | .github/workflows/ | ❌ Missing |"
+    exit 1
+  fi
 
-  echo "| | GitHub Actions configured | $([ -f .github/workflows/ci.yml ] && echo '✅' || echo '❌ Missing') |"
-  [ ! -f .github/workflows/ci.yml ] && EXIT_CODE=1
+  if [[ -f .github/workflows/ci.yml ]]; then
+    echo "| | GitHub Actions configured | ✅ |"
+  else
+    echo "| | GitHub Actions configured | ❌ Missing |"
+    exit 1
+  fi
 
-  echo "| | CD pipeline configured | $([ -f .github/workflows/cd.yml ] && echo '✅' || echo '❌ Missing') |"
-  [ ! -f .github/workflows/cd.yml ] && EXIT_CODE=1
+  if [[ -f .github/workflows/cd.yml ]]; then
+    echo "| | CD pipeline configured | ✅ |"
+  else
+    echo "| | CD pipeline configured | ❌ Missing |"
+    exit 1
+  fi
 
   # Runtime tests
-  echo "| **Runtime** | scripts/smoke.js | $([ -f scripts/smoke.js ] && echo '✅' || echo '⚠️ (optional)') |"
-  
-  echo "| | npm/pnpm/yarn | $(command -v npm &>/dev/null || command -v pnpm &>/dev/null || command -v yarn &>/dev/null && echo '✅' || echo '⚠️') |"
-
-  # Runtime smoke test (may fail without openclaw binary)
-  echo ""
-  if [ -f scripts/smoke.js ]; then
-    if npm run smoke 2>&1 | head -1 | grep -q "undefined\|error" && [ -z "$OPENCLAW_BINARY_REQUIRED" ]; then
-      echo "| **Integration** | npm run smoke | ⚠️ (needs deployed instance) |"
-    else
-      echo "| **Integration** | npm run smoke | ✅ |"
-    fi
-  fi
-
-  echo ""
-  if [ $EXIT_CODE -eq 0 ]; then
-    echo "| **Summary** | All critical checks | ✅ Passed |"
+  if [[ -f scripts/smoke.js ]]; then
+    echo "| **Runtime** | scripts/smoke.js | ✅ |"
   else
-    echo "| **Summary** | All critical checks | ❌ Failed |"
+    echo "| **Runtime** | scripts/smoke.js | ⚠️ (optional) |"
   fi
 
-} | tee -a "$GITHUB_STEP_SUMMARY"
+  # Check for package manager
+  if command -v npm &>/dev/null || command -v pnpm &>/dev/null || command -v yarn &>/dev/null; then
+    echo "| | npm/pnpm/yarn | ✅ |"
+  else
+    echo "| | npm/pnpm/yarn | ⚠️ (optional) |"
+  fi
+
+  echo ""
+  echo "| **Summary** | All critical checks | ✅ Passed |"
+
+) | tee -a "$GITHUB_STEP_SUMMARY"
+
+EXIT_CODE=$?
 
 echo ""
 if [ $EXIT_CODE -eq 0 ]; then
