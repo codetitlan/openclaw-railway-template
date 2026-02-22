@@ -36,9 +36,10 @@ permissions:
 
 jobs:
   pipeline:
-    # Using commit SHA instead of v3 tag to bypass reference resolution issues
-    # SHA: 08b9bb1 = v3 (includes Railway debugging and project-id support)
-    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@08b9bb1ed9e061ac5cbfa801abb53273ca4ec98f
+    # TEMPORARY: Reverted to v2 (stable) while v3 workflow debugging
+    # v3 has startup_failure - needs investigation on Railway project-id parameters
+    # TODO: Debug v3 full-pipeline.yml syntax/schema issues before re-enabling
+    uses: bb-claw/ci-workflows/.github/workflows/full-pipeline.yml@v2
     with:
       dev-url:                  ${{ vars.DEV_URL }}
       prod-url:                 ${{ vars.PROD_URL }}
