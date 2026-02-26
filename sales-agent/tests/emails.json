@@ -1,0 +1,4 @@
+[
+{"id":"1","sender":{"name":"John Doe","email":"john@example.com"},"subject":"Demo request","company":"Acme Co"},
+{"id":"2","sender":{"name":"Jane Smith","email":"jane@example.com"},"subject":"Interested in pricing","company":"NovaTech"}
+]
